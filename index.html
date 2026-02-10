@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Agent Profile // Xie Yiwen</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -27,8 +27,8 @@
                         'body': ['"Rajdhani"', '"Noto Sans SC"', 'sans-serif'],
                         'mono': ['"Share Tech Mono"', '"Noto Sans SC"', 'monospace'],
                     },
-                    backgroundImage: {
-                        'grid-pattern': "linear-gradient(to right, #1f2937 1px, transparent 1px), linear-gradient(to bottom, #1f2937 1px, transparent 1px)",
+                    screens: {
+                        'xs': '375px', // Add explicit support for smaller phones
                     }
                 }
             }
@@ -40,12 +40,13 @@
             background-color: #050505;
             color: #e2e8f0;
             overflow-x: hidden;
-            /* Ensure background prints correctly */
+            /* Mobile Optimization: Prevent auto-text resizing */
+            -webkit-text-size-adjust: 100%;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
 
-        /* CRT Scanline Effect */
+        /* CRT Scanline Effect - Subtle on mobile */
         .scanlines {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -108,35 +109,19 @@
         .tech-border-orange::before { border-color: #ff9900; }
         .tech-border-orange::after { border-color: #ff9900; }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0a0b10; }
-        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
-
-        /* Print Settings - OPTIMIZED FOR DARK MODE PDF */
         @media print {
-            /* Keep background color dark */
             body { 
                 background-color: #050505 !important; 
                 color: #e2e8f0 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            
-            /* Remove scanlines for static PDF as they look bad frozen */
             .scanlines, .no-print { display: none !important; }
-            
-            /* Keep borders and styles intact */
             .tech-border { 
                 background: rgba(19, 21, 26, 0.8) !important;
                 border: 1px solid #374151 !important;
             }
-            
-            /* Ensure page margins are handled by user settings, but try to fill page */
-            @page {
-                margin: 0;
-            }
+            @page { margin: 0; }
             #resume-container {
                 margin: 0;
                 width: 100%;
@@ -144,38 +129,30 @@
                 padding: 20px;
             }
         }
-        
-        .cjk-font {
-            font-family: 'Noto Sans SC', sans-serif;
-        }
     </style>
 </head>
 <body class="font-body selection:bg-neon-cyan selection:text-black">
 
     <div class="scanlines"></div>
 
-    <div id="resume-container" class="max-w-7xl mx-auto p-4 md:p-8 relative min-h-screen flex flex-col gap-6">
+    <div id="resume-container" class="max-w-7xl mx-auto p-3 md:p-8 relative min-h-screen flex flex-col gap-4 md:gap-6">
         
         <!-- HEADER: PLAYER STATUS -->
-        <header class="tech-border p-6 flex flex-col md:flex-row items-center gap-6 md:gap-8 backdrop-blur-sm z-10">
+        <header class="tech-border p-4 md:p-6 flex flex-col md:flex-row items-center gap-4 md:gap-8 backdrop-blur-sm z-10">
             <!-- Avatar Interactive Section -->
             <div class="relative shrink-0 group cursor-pointer" onclick="document.getElementById('avatar-upload').click()" title="点击更换头像">
                 <input type="file" id="avatar-upload" class="hidden" accept="image/*" onchange="updateAvatar(this)">
                 
-                <div class="w-32 h-32 md:w-40 md:h-40 bg-gray-800 hex-avatar flex items-center justify-center border-4 border-gray-700 relative overflow-hidden group-hover:border-neon-cyan transition-colors duration-300">
-                   <!-- Avatar Image -->
+                <div class="w-28 h-28 md:w-40 md:h-40 bg-gray-800 hex-avatar flex items-center justify-center border-4 border-gray-700 relative overflow-hidden group-hover:border-neon-cyan transition-colors duration-300">
                    <img id="avatar-img" src="https://api.dicebear.com/7.x/bottts/svg?seed=XieYiwen&backgroundColor=1f2937" alt="Avatar" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
-                   
-                   <!-- Overlay Effect on Hover -->
                    <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-neon-cyan mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                        <span class="text-neon-cyan text-xs font-mono font-bold">UPLOAD_IMG</span>
                    </div>
-                   
                    <div class="absolute inset-0 bg-neon-cyan/10 mix-blend-overlay pointer-events-none"></div>
                 </div>
                 <!-- Level Badge -->
-                <div class="absolute -bottom-2 -right-2 bg-black border border-neon-orange px-3 py-1 font-mono text-neon-orange text-sm font-bold tracking-widest clip-path-slant pointer-events-none">
+                <div class="absolute -bottom-2 -right-2 bg-black border border-neon-orange px-2 py-0.5 md:px-3 md:py-1 font-mono text-neon-orange text-xs md:text-sm font-bold tracking-widest clip-path-slant pointer-events-none">
                     LV. 3
                 </div>
             </div>
@@ -183,28 +160,30 @@
             <!-- Info -->
             <div class="flex-grow text-center md:text-left w-full">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-700 pb-4 mb-4">
-                    <div>
-                        <h1 class="text-4xl md:text-6xl font-header font-black text-white tracking-wider uppercase glitch" data-text="谢逸闻">
+                    <div class="w-full md:w-auto">
+                        <h1 class="text-3xl md:text-6xl font-header font-black text-white tracking-wider uppercase glitch" data-text="谢逸闻">
                             谢逸闻
                         </h1>
-                        <!-- UPDATED PLAYER ID -->
-                        <p class="text-neon-cyan font-mono text-lg tracking-[0.2em] mt-1 uppercase">PLAYER_ID: ALEX XIE // 资深游戏策划</p>
+                        <!-- Mobile font size adjusted -->
+                        <p class="text-neon-cyan font-mono text-sm md:text-lg tracking-widest md:tracking-[0.2em] mt-1 uppercase break-words">
+                            ID: ALEX XIE // 资深游戏策划
+                        </p>
                     </div>
-                    <div class="mt-4 md:mt-0 flex items-center gap-2 bg-green-900/20 border border-green-500/50 px-4 py-1 rounded-sm">
+                    <div class="mt-3 md:mt-0 flex items-center justify-center md:justify-start gap-2 bg-green-900/20 border border-green-500/50 px-3 py-1 rounded-sm w-full md:w-auto">
                         <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span class="text-green-500 font-mono text-sm font-bold">当前状态: 就绪 (求职中)</span>
+                        <span class="text-green-500 font-mono text-xs md:text-sm font-bold">状态: 就绪 (求职中)</span>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-sm text-gray-400">
-                    <div class="flex items-center gap-2">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 font-mono text-xs md:text-sm text-gray-400">
+                    <div class="flex items-center justify-center md:justify-start gap-2">
                         <span class="text-neon-orange">>></span> 终端: 18248839345
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center justify-center md:justify-start gap-2">
                         <span class="text-neon-orange">>></span> 频段: 2877332864@qq.com
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-neon-orange">>></span> 更新时间: 02.10.2026
+                    <div class="flex items-center justify-center md:justify-start gap-2">
+                        <span class="text-neon-orange">>></span> 更新: 02.10.2026
                     </div>
                 </div>
             </div>
@@ -213,24 +192,22 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
             
             <!-- LEFT SIDEBAR: STATS & ATTRIBUTES -->
+            <!-- Use flex-col-reverse on mobile if you wanted stats at bottom, but Character Sheet logic suggests Stats first. Keeping default order. -->
             <aside class="lg:col-span-4 flex flex-col gap-6">
                 
                 <!-- RADAR CHART -->
-                <div class="tech-border p-6 bg-cyber-dark/90 flex flex-col items-center">
-                    <h3 class="w-full text-neon-cyan font-header text-xl border-b border-gray-700 pb-2 mb-4 flex justify-between">
+                <div class="tech-border p-4 md:p-6 bg-cyber-dark/90 flex flex-col items-center">
+                    <h3 class="w-full text-neon-cyan font-header text-lg md:text-xl border-b border-gray-700 pb-2 mb-4 flex justify-between">
                         <span>核心六维</span>
                         <span class="text-xs font-mono self-end opacity-50">HEX_DATA</span>
                     </h3>
                     
-                    <div class="relative w-64 h-64">
-                        <!-- SVG Radar Chart - EXPANDED VIEWBOX to prevent text clipping -->
+                    <div class="relative w-56 h-56 md:w-64 md:h-64">
                         <svg viewBox="-20 -20 140 140" class="w-full h-full drop-shadow-[0_0_10px_rgba(0,243,255,0.3)]">
-                            <!-- Background Grid -->
                             <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" fill="none" stroke="#374151" stroke-width="0.5"/>
                             <polygon points="50,20 80,35 80,65 50,80 20,65 20,35" fill="none" stroke="#374151" stroke-width="0.5"/>
                             <polygon points="50,35 65,42.5 65,57.5 50,65 35,57.5 35,42.5" fill="none" stroke="#374151" stroke-width="0.5"/>
                             
-                            <!-- Stat Lines -->
                             <line x1="50" y1="50" x2="50" y2="5" stroke="#374151" stroke-width="0.5"/>
                             <line x1="50" y1="50" x2="95" y2="27.5" stroke="#374151" stroke-width="0.5"/>
                             <line x1="50" y1="50" x2="95" y2="72.5" stroke="#374151" stroke-width="0.5"/>
@@ -238,15 +215,9 @@
                             <line x1="50" y1="50" x2="5" y2="72.5" stroke="#374151" stroke-width="0.5"/>
                             <line x1="50" y1="50" x2="5" y2="27.5" stroke="#374151" stroke-width="0.5"/>
 
-                            <!-- Data Polygon (The Stats) -->
-                            <!-- UPDATED: Creative (TL) pushed to MAX (5, 27.5) -->
-                            <!-- Points: Top(50,10), TR(90,30), BR(75,70), Bot(50,80), BL(30,65), TL(5,27.5 MAX) -->
                             <polygon points="50,10 90,30 75,70 50,80 30,65 5,27.5" fill="rgba(0, 243, 255, 0.2)" stroke="#00f3ff" stroke-width="1.5"/>
-                            
-                            <!-- Glowing dot for Creative stat to highlight it -->
                             <circle cx="5" cy="27.5" r="2" fill="#ff9900" class="animate-pulse" />
 
-                            <!-- Labels: Coordinates adjusted and viewBox expanded -->
                             <text x="50" y="-5" text-anchor="middle" fill="#00f3ff" font-size="6" font-weight="bold" font-family="Noto Sans SC">执行能力</text>
                             <text x="105" y="27.5" text-anchor="start" fill="#00f3ff" font-size="6" font-weight="bold" font-family="Noto Sans SC">逻辑架构</text>
                             <text x="105" y="72.5" text-anchor="start" fill="#00f3ff" font-size="6" font-weight="bold" font-family="Noto Sans SC">工具使用</text>
@@ -258,34 +229,34 @@
                 </div>
 
                 <!-- PASSIVE SKILLS -->
-                <div class="tech-border p-6 bg-cyber-dark/90 flex-grow">
-                    <h3 class="text-neon-orange font-header text-xl border-b border-gray-700 pb-2 mb-4">被动技能 (PASSIVE)</h3>
+                <div class="tech-border p-4 md:p-6 bg-cyber-dark/90 flex-grow">
+                    <h3 class="text-neon-orange font-header text-lg md:text-xl border-b border-gray-700 pb-2 mb-4">被动技能 (PASSIVE)</h3>
                     <ul class="space-y-4 font-body text-gray-300">
                         <li class="flex items-start gap-3">
                             <span class="text-neon-orange mt-1">◆</span>
                             <div>
-                                <strong class="text-white block font-header text-base tracking-wider">团队增益光环</strong>
+                                <strong class="text-white block font-header text-sm md:text-base tracking-wider">团队增益光环</strong>
                                 <span class="text-xs text-gray-500">提升跨部门沟通效率，减少信息衰减。</span>
                             </div>
                         </li>
                         <li class="flex items-start gap-3">
                             <span class="text-neon-orange mt-1">◆</span>
                             <div>
-                                <strong class="text-white block font-header text-base tracking-wider">逻辑闭环</strong>
+                                <strong class="text-white block font-header text-sm md:text-base tracking-wider">逻辑闭环</strong>
                                 <span class="text-xs text-gray-500">确保方案从概念到落地的完整性与自洽性。</span>
                             </div>
                         </li>
                         <li class="flex items-start gap-3">
                             <span class="text-neon-orange mt-1">◆</span>
                             <div>
-                                <strong class="text-white block font-header text-base tracking-wider">故障排除</strong>
+                                <strong class="text-white block font-header text-sm md:text-base tracking-wider">故障排除</strong>
                                 <span class="text-xs text-gray-500">快速定位设计盲点，提供可执行的Plan B。</span>
                             </div>
                         </li>
                     </ul>
 
                      <!-- Education -->
-                     <h3 class="text-neon-orange font-header text-xl border-b border-gray-700 pb-2 mt-8 mb-4">训练认证 (EDU)</h3>
+                     <h3 class="text-neon-orange font-header text-lg md:text-xl border-b border-gray-700 pb-2 mt-8 mb-4">训练认证 (EDU)</h3>
                      <div class="space-y-2">
                          <div class="bg-black/50 p-2 border border-gray-800">
                              <div class="text-neon-cyan text-sm font-bold">系统版本 v2026</div>
@@ -302,49 +273,52 @@
 
             <!-- MAIN CONTENT: MISSION ARCHIVES -->
             <main class="lg:col-span-8 flex flex-col gap-6">
-                <div class="tech-border p-6 md:p-8 bg-cyber-dark/90 h-full">
-                    <div class="flex items-center justify-between border-b border-gray-700 pb-4 mb-8">
-                        <h2 class="text-2xl font-header text-white flex items-center gap-3">
-                            <span class="w-2 h-8 bg-neon-cyan block"></span>
+                <div class="tech-border p-4 md:p-8 bg-cyber-dark/90 h-full">
+                    <div class="flex items-center justify-between border-b border-gray-700 pb-4 mb-6 md:mb-8">
+                        <h2 class="text-xl md:text-2xl font-header text-white flex items-center gap-3">
+                            <span class="w-2 h-6 md:h-8 bg-neon-cyan block"></span>
                             核心任务档案
                         </h2>
-                        <span class="font-mono text-neon-cyan text-xs md:text-sm animate-pulse">MISSION_LOGS LOADING...</span>
+                        <span class="font-mono text-neon-cyan text-xs md:text-sm animate-pulse">LOGS LOADING...</span>
                     </div>
 
                     <div class="space-y-8 relative">
-                        <!-- Vertical Line -->
+                        <!-- Vertical Line (Hidden on mobile) -->
                         <div class="absolute left-4 top-4 bottom-4 w-px bg-gray-800 hidden md:block"></div>
 
                         <!-- Job 1 -->
                         <div class="relative pl-0 md:pl-12 group">
-                            <!-- Timeline Dot -->
+                            <!-- Timeline Dot (Hidden on mobile) -->
                             <div class="absolute left-[11px] top-6 w-3 h-3 bg-black border-2 border-neon-cyan rounded-full z-10 hidden md:block group-hover:bg-neon-cyan transition-colors"></div>
 
-                            <div class="bg-gray-900/50 border border-gray-700 p-6 hover:border-neon-cyan transition-colors duration-300 relative overflow-hidden">
+                            <div class="bg-gray-900/50 border border-gray-700 p-4 md:p-6 hover:border-neon-cyan transition-colors duration-300 relative overflow-hidden">
                                 <!-- Mission Complete Stamp -->
-                                <div class="absolute -right-4 top-4 border-2 border-green-500/30 text-green-500/30 font-header font-bold text-xs px-2 py-1 rotate-12 uppercase tracking-widest pointer-events-none">
+                                <div class="absolute -right-4 top-4 border-2 border-green-500/30 text-green-500/30 font-header font-bold text-[10px] md:text-xs px-2 py-1 rotate-12 uppercase tracking-widest pointer-events-none opacity-50 md:opacity-100">
                                     ACTIVE / 开发中
                                 </div>
 
-                                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-                                    <div>
-                                        <h3 class="text-xl font-header font-bold text-white group-hover:text-neon-cyan transition-colors">任务: 灰境行者 (世界观构建)</h3>
-                                        <div class="text-neon-orange font-mono text-sm mt-1">资深世界观策划 // 腾讯北极光A3工作室 (外包)</div>
+                                <div class="flex flex-col gap-2 mb-4">
+                                    <div class="pr-16 md:pr-0">
+                                        <h3 class="text-lg md:text-xl font-header font-bold text-white group-hover:text-neon-cyan transition-colors">任务: 灰境行者 (世界观构建)</h3>
+                                        <div class="text-neon-orange font-mono text-xs md:text-sm mt-1">资深世界观策划 // 腾讯北极光A3工作室</div>
                                     </div>
-                                    <div class="mt-2 md:mt-0 font-mono text-gray-500 text-sm bg-black px-2 py-1 border border-gray-800">
+                                    <div class="font-mono text-gray-500 text-xs bg-black px-2 py-1 border border-gray-800 self-start">
                                         2024.03 - 至今
                                     </div>
                                 </div>
                                 
-                                <ul class="list-none space-y-2 text-gray-400 font-body text-sm md:text-base">
+                                <ul class="list-none space-y-3 text-gray-400 font-body text-sm md:text-base">
                                     <li class="flex gap-2">
-                                        <span class="text-neon-cyan">></span> 构建游戏内世界观架构，设计核心阵营势力与其社会学背景，确保逻辑自洽。
+                                        <span class="text-neon-cyan shrink-0">></span> 
+                                        <span>构建游戏内世界观架构，设计核心阵营势力与其社会学背景，确保逻辑自洽。</span>
                                     </li>
                                     <li class="flex gap-2">
-                                        <span class="text-neon-cyan">></span> 负责新手引导系统重构，优化“搜刮-战斗-复活”核心循环的教学体验，显著降低前期流失率。
+                                        <span class="text-neon-cyan shrink-0">></span> 
+                                        <span>负责新手引导系统重构，优化“搜刮-战斗-复活”核心循环的教学体验，显著降低前期流失率。</span>
                                     </li>
                                     <li class="flex gap-2">
-                                        <span class="text-neon-cyan">></span> 撰写关键角色人物小传与战术装备考据，提升军事设定的硬核真实感与沉浸度。
+                                        <span class="text-neon-cyan shrink-0">></span> 
+                                        <span>撰写关键角色人物小传与战术装备考据，提升军事设定的硬核真实感与沉浸度。</span>
                                     </li>
                                 </ul>
                             </div>
@@ -355,31 +329,34 @@
                             <!-- Timeline Dot -->
                             <div class="absolute left-[11px] top-6 w-3 h-3 bg-black border-2 border-gray-500 rounded-full z-10 hidden md:block group-hover:border-neon-cyan transition-colors"></div>
 
-                            <div class="bg-gray-900/50 border border-gray-700 p-6 hover:border-gray-500 transition-colors duration-300 relative">
+                            <div class="bg-gray-900/50 border border-gray-700 p-4 md:p-6 hover:border-gray-500 transition-colors duration-300 relative">
                                 <!-- Mission Active Stamp -->
-                                <div class="absolute -right-4 top-4 border-2 border-neon-cyan/30 text-neon-cyan/30 font-header font-bold text-xs px-2 py-1 rotate-12 uppercase tracking-widest pointer-events-none">
+                                <div class="absolute -right-4 top-4 border-2 border-neon-cyan/30 text-neon-cyan/30 font-header font-bold text-[10px] md:text-xs px-2 py-1 rotate-12 uppercase tracking-widest pointer-events-none opacity-50 md:opacity-100">
                                     AI PIPELINE
                                 </div>
 
-                                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-                                    <div>
-                                        <h3 class="text-xl font-header font-bold text-white">项目代号: 碎片叙事系统</h3>
-                                        <div class="text-neon-orange font-mono text-sm mt-1">叙事/文案策划 (AI Pipeline)</div>
+                                <div class="flex flex-col gap-2 mb-4">
+                                    <div class="pr-16 md:pr-0">
+                                        <h3 class="text-lg md:text-xl font-header font-bold text-white">项目代号: 碎片叙事系统</h3>
+                                        <div class="text-neon-orange font-mono text-xs md:text-sm mt-1">叙事/文案策划 (AI Pipeline)</div>
                                     </div>
-                                    <div class="mt-2 md:mt-0 font-mono text-gray-500 text-sm bg-black px-2 py-1 border border-gray-800">
+                                    <div class="font-mono text-gray-500 text-xs bg-black px-2 py-1 border border-gray-800 self-start">
                                         2025.06 - 至今
                                     </div>
                                 </div>
                                 
-                                <ul class="list-none space-y-2 text-gray-400 font-body text-sm md:text-base">
+                                <ul class="list-none space-y-3 text-gray-400 font-body text-sm md:text-base">
                                     <li class="flex gap-2">
-                                        <span class="text-gray-500">></span> 逆向拆解 3A 级（如《生化危机》《最后生还者》）环境叙事逻辑，建立高标准文本架构。
+                                        <span class="text-gray-500 shrink-0">></span> 
+                                        <span>逆向拆解 3A 级（如《生化危机》《最后生还者》）环境叙事逻辑，建立高标准文本架构。</span>
                                     </li>
                                     <li class="flex gap-2">
-                                        <span class="text-gray-500">></span> 搭建 AIGC 文案产出管线，微调 Prompt 与参数，批量生成数百条高质量碎片化叙事（日记、终端机档案）。
+                                        <span class="text-gray-500 shrink-0">></span> 
+                                        <span>搭建 AIGC 文案产出管线，微调 Prompt 与参数，批量生成数百条高质量碎片化叙事（日记、终端机档案）。</span>
                                     </li>
                                     <li class="flex gap-2">
-                                        <span class="text-gray-500">></span> 独立完成从“文本构建”到“引擎实装”的全流程落地，实现叙事与关卡环境的深度交互。
+                                        <span class="text-gray-500 shrink-0">></span> 
+                                        <span>独立完成从“文本构建”到“引擎实装”的全流程落地，实现叙事与关卡环境的深度交互。</span>
                                     </li>
                                 </ul>
                             </div>
@@ -391,107 +368,107 @@
         </div>
 
         <!-- FOOTER: INVENTORY / LOADOUT -->
-        <footer class="tech-border-orange p-6 bg-cyber-dark/90 relative">
-            <!-- Decorative corner for footer -->
+        <footer class="tech-border-orange p-4 md:p-6 bg-cyber-dark/90 relative">
             <div class="absolute top-0 right-0 p-2">
                 <div class="w-16 h-1 bg-neon-orange/20"></div>
             </div>
 
-            <h3 class="text-neon-orange font-header text-xl mb-6 flex items-center gap-2">
+            <h3 class="text-neon-orange font-header text-lg md:text-xl mb-6 flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                 装备栏 / 技能库 (LOADOUT)
             </h3>
             
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <!-- Mobile: 2 columns, Tablet/Desktop: 3 columns -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
                 
                 <!-- OLD SKILLS -->
-                <div class="bg-black p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
-                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                <div class="bg-black p-2 md:p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono text-gray-400 mb-1">
                         <span>Unity / UE5</span>
                         <span class="text-neon-orange">熟练</span>
                     </div>
-                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="w-full h-1.5 md:h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-neon-orange w-[85%] group-hover:animate-pulse"></div>
                     </div>
                 </div>
 
-                <div class="bg-black p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
-                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                <div class="bg-black p-2 md:p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono text-gray-400 mb-1">
                         <span>人物卡设计</span>
                         <span class="text-neon-orange">专精</span>
                     </div>
-                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="w-full h-1.5 md:h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-neon-orange w-[95%] group-hover:animate-pulse"></div>
                     </div>
                 </div>
 
-                <div class="bg-black p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
-                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                <div class="bg-black p-2 md:p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono text-gray-400 mb-1">
                         <span>AIGC 工作流</span>
                         <span class="text-neon-orange">高阶</span>
                     </div>
-                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="w-full h-1.5 md:h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-neon-orange w-[90%] group-hover:animate-pulse"></div>
                     </div>
                 </div>
 
-                 <div class="bg-black p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
-                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                 <div class="bg-black p-2 md:p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono text-gray-400 mb-1">
                         <span>文档/沟通</span>
                         <span class="text-neon-orange">MAX</span>
                     </div>
-                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="w-full h-1.5 md:h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-neon-orange w-[100%] group-hover:animate-pulse"></div>
                     </div>
                 </div>
 
                 <!-- NEW SKILLS -->
-                 <div class="bg-black p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
-                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                 <div class="bg-black p-2 md:p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono text-gray-400 mb-1">
                         <span>ChatGPT</span>
                         <span class="text-neon-orange">专精</span>
                     </div>
-                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="w-full h-1.5 md:h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-neon-orange w-[100%] group-hover:animate-pulse"></div>
                     </div>
                 </div>
 
-                 <div class="bg-black p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
-                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                 <div class="bg-black p-2 md:p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono text-gray-400 mb-1">
                         <span>Gemini</span>
                         <span class="text-neon-orange">专精</span>
                     </div>
-                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="w-full h-1.5 md:h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-neon-orange w-[100%] group-hover:animate-pulse"></div>
                     </div>
                 </div>
 
-                 <div class="bg-black p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
-                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                 <div class="bg-black p-2 md:p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono text-gray-400 mb-1">
                         <span>Nano Banana</span>
                         <span class="text-neon-orange">专精</span>
                     </div>
-                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="w-full h-1.5 md:h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-neon-orange w-[100%] group-hover:animate-pulse"></div>
                     </div>
                 </div>
 
-                 <div class="bg-black p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
-                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                 <div class="bg-black p-2 md:p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono text-gray-400 mb-1">
                         <span>Perforce/P4</span>
                         <span class="text-neon-orange">专精</span>
                     </div>
-                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="w-full h-1.5 md:h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-neon-orange w-[100%] group-hover:animate-pulse"></div>
                     </div>
                 </div>
 
-                 <div class="bg-black p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
-                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                 <div class="bg-black p-2 md:p-3 border border-gray-800 group hover:border-neon-orange transition-colors">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono text-gray-400 mb-1">
                         <span>Excel</span>
                         <span class="text-neon-orange">专精</span>
                     </div>
-                    <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="w-full h-1.5 md:h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-neon-orange w-[100%] group-hover:animate-pulse"></div>
                     </div>
                 </div>

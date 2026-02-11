@@ -1,3 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逃离 / ESCAPE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        /* 这里可以加一些简单的全局样式 */
+        body { background-color: #000; color: white; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Sword, ShoppingBag, Heart, Skull, Briefcase, Footprints, LogOut, Zap, AlertTriangle, Radio, Coins, Trash2, Utensils, Smile, EyeOff, Activity, Hammer, HelpCircle, Gem } from 'lucide-react';
 
@@ -923,3 +944,8 @@ export default function ExtractionGame() {
     </div>
   );
 }
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<EscapeGame />);
+    </script>
+</body>
+</html>

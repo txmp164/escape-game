@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>废土行动 - Pixel Extraction RPG</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,6 +19,9 @@
         body {
             background-color: #171717;
             color: #e2e8f0;
+            overflow-y: auto; /* 允许页面纵向滚动以适应 140vh 的高度 */
+            font-family: 'VT323', monospace; 
+            touch-action: manipulation;
         }
         .pixel-font { 
             font-family: 'VT323', monospace; 
@@ -26,20 +29,63 @@
         }
         .game-container { 
             font-family: 'VT323', monospace; 
-            /* 增大基础字号 */
             font-size: 1.25rem; 
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .fade-in { animation: fadeIn 0.3s ease-out; }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake-anim { animation: shake 0.5s; }
+        
         .bg-noise { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); }
         
-        /* 老虎机动画效果 */
         @keyframes slotSpin {
-            0% { transform: translateY(-100%); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
+            0% { transform: translateY(-10%); opacity: 0.5; filter: blur(2px); }
+            100% { transform: translateY(10%); opacity: 1; filter: blur(0px); }
         }
-        .slot-item { animation: slotSpin 0.2s ease-out; }
+        .slot-item-spinning { animation: slotSpin 0.1s linear infinite; }
+        
+        @keyframes pulse-gold {
+            0%, 100% { border-color: #ca8a04; box-shadow: 0 0 5px #ca8a04; }
+            50% { border-color: #facc15; box-shadow: 0 0 15px #facc15, inset 0 0 10px #facc15; }
+        }
+        .fever-mode { animation: pulse-gold 1s infinite; }
+
+        @keyframes pulse-victory {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.02); filter: brightness(1.3); }
+        }
+        .victory-pulse { animation: pulse-victory 2s infinite ease-in-out; }
+
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 10;
+            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(0,0,0,0) 100%);
+            opacity: 0.1;
+            position: absolute;
+            bottom: 100%;
+            animation: scanline 10s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes scanline {
+            0% { bottom: 100%; }
+            100% { bottom: -100%; }
+        }
     </style>
 </head>
 <body>
@@ -48,7 +94,9 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 图标组件 (手动定义 SVG 以替代 lucide-react) ---
+        const WIN_GOAL = 200000;
+
+        // --- 图标组件 ---
         const IconBase = ({ d, color, size = 24, className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${color} ${className}`}>
                 {d}
@@ -74,7 +122,7 @@
         const Hammer = (props) => <IconBase {...props} d={<><path d="M15 12l-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9"/><path d="M17.64 15L22 10.64"/><path d="M20.91 8.26L15.73 3.08a1 1 0 0 0-1.41 0l-1.42 1.42a1 1 0 0 0 0 1.41l5.66 5.66a1 1 0 0 0 1.41 0l1.42-1.42a1 1 0 0 0 0-1.41z" /></>} />;
         const HelpCircle = (props) => <IconBase {...props} d={<><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17" /></>} />;
         const Gem = (props) => <IconBase {...props} d={<path d="M6 3h12l4 6-10 13L2 9z" />} />;
-        const Dices = (props) => <IconBase {...props} d={<><rect width="12" height="12" x="2" y="10" rx="2" ry="2" /><path d="m17.92 14 3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6" /><path d="M6 18h.01" /><path d="M10 14h.01" /><path d="M15 6h.01" /><path d="M18 9h.01" /></>} />;
+        const Rocket = (props) => <IconBase {...props} d={<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zM12 15l-3-3m1.5 1.5l2-2M2 22l1.5-1.5M9 11l.5-.5M20 4l-4 4m1-4l3 3M15 12s-4-4-8-1l12 12c3-4-1-8-1-8z" />} />;
 
         // --- 游戏数据配置 ---
         const ITEMS = {
@@ -82,7 +130,7 @@
           food:     { id: 'food', name: '压缩饼干', type: 'consumable', cost: 30, effect: 'satiety', value: 40, desc: '恢复40饱食', rarity: 'white' },
           alcohol:  { id: 'alcohol', name: '陈年威士忌', type: 'consumable', cost: 80, effect: 'mood', value: 50, desc: '恢复50心情,减少10San', rarity: 'green' },
           pills:    { id: 'pills', name: '镇静剂', type: 'consumable', cost: 120, effect: 'sanity', value: 40, desc: '恢复40理智(San)', rarity: 'blue' },
-          ammo_box: { id: 'ammo_box', name: '自制弹药箱', type: 'consumable', cost: 0, effect: 'buff_atk', value: 10, desc: '下一次战斗伤害+10 (工作台制造)', rarity: 'green' },
+          ammo_box: { id: 'ammo_box', name: '自制弹药箱', type: 'consumable', cost: 0, effect: 'buff_atk', value: 10, desc: '伤害+10 (工作台制造)', rarity: 'green' },
         };
 
         const GEAR = {
@@ -101,8 +149,8 @@
         };
 
         const FACILITIES = {
-          medical:   { id: 'medical', name: '战地医疗站', cost: { '螺丝组件': 10, '废旧钢材': 5 }, desc: '撤离后自动恢复翻倍 (20->40)' },
-          workbench: { id: 'workbench', name: '精密工作台', cost: { '线材组件': 5, '蓄电池': 1 }, desc: '允许消耗废料制造强力弹药' },
+          medical:   { id: 'medical', name: '战地医疗站', cost: { '螺丝组件': 10, '废旧钢材': 5 }, desc: '撤离后自动恢复翻倍' },
+          workbench: { id: 'workbench', name: '精密工作台', cost: { '线材组件': 5, '蓄电池': 1 }, desc: '解锁弹药制造' },
           kitchen:   { id: 'kitchen', name: '野战厨房', cost: { '神秘肉罐头': 3 }, desc: '饱食度上限 +50' },
         };
 
@@ -193,8 +241,7 @@
           </div>
         );
 
-        // 老虎机组件
-        const SlotMachine = ({ bet, onSpin, result, isSpinning }) => {
+        const SlotMachine = ({ bet, onSpin, result, isSpinning, jackpot, spinCount, freeSpins, moodMsg }) => {
             const symbols = ['💀', '🔧', '🍗', '☢️', '💎', '7️⃣'];
             const [displaySlots, setDisplaySlots] = useState(['❓', '❓', '❓']);
 
@@ -206,19 +253,40 @@
                             symbols[Math.floor(Math.random() * symbols.length)],
                             symbols[Math.floor(Math.random() * symbols.length)]
                         ]);
-                    }, 100);
+                    }, 50);
                     return () => clearInterval(interval);
                 } else if (result) {
                     setDisplaySlots(result);
                 }
             }, [isSpinning, result]);
 
+            const progress = Math.min(100, (spinCount % 20) / 20 * 100);
+            const moodColor = moodMsg && moodMsg.includes('+') ? 'text-green-400' : moodMsg && moodMsg.includes('-') ? 'text-red-400' : 'text-purple-400';
+
             return (
-                <div className="bg-slate-900 p-4 border-4 border-yellow-600 rounded-lg text-center mb-4 relative overflow-hidden">
+                <div className={`bg-slate-900 p-3 border-4 border-yellow-600 rounded-lg text-center mb-2 relative overflow-hidden ${freeSpins > 0 ? 'fever-mode' : ''}`}>
                     <div className="absolute inset-0 bg-yellow-900/10 pointer-events-none"></div>
+                    <div className="flex justify-between items-center mb-2 px-1">
+                        <div className="text-left">
+                            <div className="text-[10px] text-yellow-600 font-bold uppercase tracking-widest">JACKPOT</div>
+                            <div className="text-xl text-yellow-400 font-bold leading-none animate-pulse">${jackpot.toLocaleString()}</div>
+                        </div>
+                        <div className="text-right w-24">
+                            <div className="text-[10px] text-purple-400 font-bold uppercase tracking-widest flex justify-end gap-1">
+                                {freeSpins > 0 ? <span className="animate-bounce">FEVER TIME!</span> : 'FEVER METER'}
+                            </div>
+                            {freeSpins > 0 ? (
+                                <div className="text-purple-300 text-sm font-bold">剩余 {freeSpins} 次</div>
+                            ) : (
+                                <div className="h-1 bg-slate-800 border border-slate-600 mt-1 relative">
+                                    <div className="h-full bg-purple-600 transition-all" style={{width: `${progress}%`}}></div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     <div className="flex justify-center gap-2 mb-4 bg-black/50 p-2 rounded">
                         {displaySlots.map((s, i) => (
-                            <div key={i} className="w-16 h-16 bg-slate-200 border-4 border-slate-600 flex items-center justify-center text-4xl shadow-inner slot-item text-black">
+                            <div key={i} className={`w-16 h-16 bg-slate-200 border-4 border-slate-600 flex items-center justify-center text-4xl shadow-inner text-black ${isSpinning ? 'slot-item-spinning' : ''}`}>
                                 {s}
                             </div>
                         ))}
@@ -227,36 +295,60 @@
                         onClick={onSpin} 
                         disabled={isSpinning}
                         className={`w-full py-3 text-xl font-bold rounded border-b-4 active:border-b-0 active:translate-y-1 transition-all ${
-                            isSpinning ? 'bg-slate-600 border-slate-800 text-slate-400' : 'bg-red-600 border-red-800 hover:bg-red-500 text-white'
+                            isSpinning ? 'bg-slate-600 border-slate-800 text-slate-400' : 
+                            freeSpins > 0 ? 'bg-purple-600 border-purple-800 hover:bg-purple-500 text-white animate-pulse' :
+                            'bg-red-600 border-red-800 hover:bg-red-500 text-white'
                         }`}
                     >
-                        {isSpinning ? 'SPINNING...' : `PULL LEVER ($${bet})`}
+                        {isSpinning ? 'SPINNING...' : freeSpins > 0 ? 'FREE SPIN!' : `PULL LEVER ($${bet})`}
                     </button>
-                    <div className="mt-2 text-xs text-yellow-500/80 uppercase tracking-widest">
-                        Match 2: x2 • Match 3: x10 • 777: x50
+                    <div className="mt-2 flex justify-between text-[10px] text-slate-500 px-1">
+                        <span>累计: {spinCount} 次</span>
+                        {spinCount >= 648 ? <span className="text-red-500 animate-ping">JACKPOT READY</span> : <span>目标: 648</span>}
                     </div>
+                    {moodMsg && (<div className={`mt-1 text-sm ${moodColor}`}>{moodMsg}</div>)}
                 </div>
             );
         };
 
         // --- 主组件 ---
         function ExtractionGame() {
-          const [scene, setScene] = useState('home');
-          const [logs, setLogs] = useState(["欢迎来到 0 号禁区。存活，搜刮，暴富。"]);
-          const [confirmId, setConfirmId] = useState(null); // 购买确认状态
+          const [scene, setScene] = useState('intro');
+          const [logs, setLogs] = useState([]);
+          const [confirmId, setConfirmId] = useState(null); 
+          const [isShake, setIsShake] = useState(false);
           
-          // 商店状态
-          const [shopTab, setShopTab] = useState('buy'); // 'buy' | 'gamble'
+          const [shopTab, setShopTab] = useState('buy');
           const [betAmount, setBetAmount] = useState(50);
           const [isSpinning, setIsSpinning] = useState(false);
           const [slotResult, setSlotResult] = useState(null);
+          const [jackpot, setJackpot] = useState(12000);
+          const [spinCount, setSpinCount] = useState(0);
+          const [freeSpins, setFreeSpins] = useState(0);
+          const [slotMoodMsg, setSlotMoodMsg] = useState('');
+
+          // Intro State
+          const [introStep, setIntroStep] = useState(0);
+          const introEndRef = useRef(null); 
+          const introTexts = [
+              "除夕之夜，写字楼的灯光惨白依旧。",
+              "你刚刚提交了最后一行代码，正准备迎接久违的假期。",
+              "推开大门的瞬间，一阵不属于这个季节的刺骨寒风将你吞没……",
+              "再睁眼时，熟悉的街道已成焦土。",
+              "视网膜上跳动着幽绿色的乱码，最终汇聚成一个复古的游戏界面。",
+              "【系统启动……废土生存协议已加载】",
+              "【注意：检测到黑市控制权已被不明财团掌控】",
+              "【目标更新：缴纳 $200,000 激活撤离飞船，返回现实世界】",
+              "在这个绝望的世界，金钱就是你唯一的归途。",
+              "活下去，或者成为数据的一部分。"
+          ];
 
           const [player, setPlayer] = useState({
             hp: 100, maxHp: 100,
             satiety: 100, maxSatiety: 100,
             mood: 100, maxMood: 100,
             sanity: 100, maxSanity: 100,
-            money: 500, // 稍微增加初始资金方便测试赌博
+            money: 500, 
             weapon: GEAR.knife,
             armor: GEAR.clothes,
             relics: [],
@@ -270,7 +362,7 @@
             dangerLevel: 1,
             currentEnemy: null,
             isGlitchEnemy: false,
-            tempLoot: [],     
+            tempLoot: [],      
             currentLootItem: null,
             currentInteractiveEvent: null,
           });
@@ -280,93 +372,64 @@
             setLogs(prev => [`[${time}] ${msg}`, ...prev].slice(0, 8));
           };
 
-          const countItemInStorage = (itemName) => {
-            return player.storage.filter(i => i.name === itemName).length;
+          const triggerShake = () => {
+              setIsShake(true);
+              setTimeout(() => setIsShake(false), 500);
           };
 
+          const countItemInStorage = (itemName) => player.storage.filter(i => i.name === itemName).length;
           const removeItemsFromStorage = (itemName, count) => {
             let removed = 0;
-            const newStorage = player.storage.filter(item => {
-              if (item.name === itemName && removed < count) {
-                removed++;
-                return false;
-              }
+            return player.storage.filter(item => {
+              if (item.name === itemName && removed < count) { removed++; return false; }
               return true;
             });
-            return newStorage;
           };
 
-          // ... (设施、弹药、事件逻辑保持不变)
           const upgradeFacility = (facId) => {
             const facility = FACILITIES[facId];
             if (player.facilities[facId]) return;
-
             let canBuild = true;
             for (const [name, count] of Object.entries(facility.cost)) {
               if (countItemInStorage(name) < count) canBuild = false;
             }
-
             if (canBuild) {
               let newStorage = [...player.storage];
               for (const [name, count] of Object.entries(facility.cost)) {
                 let removed = 0;
                 newStorage = newStorage.filter(item => {
-                  if (item.name === name && removed < count) {
-                    removed++;
-                    return false;
-                  }
+                  if (item.name === name && removed < count) { removed++; return false; }
                   return true;
                 });
               }
-
               const newFacilities = { ...player.facilities, [facId]: true };
               let updates = { storage: newStorage, facilities: newFacilities };
-
-              if (facId === 'kitchen') {
-                updates.maxSatiety = 150;
-                updates.satiety = 150;
-              }
-
+              if (facId === 'kitchen') { updates.maxSatiety = 150; updates.satiety = 150; }
               setPlayer(prev => ({ ...prev, ...updates }));
               addLog(`设施建造成功：${facility.name}`, 'success');
-            } else {
-              addLog('材料不足，无法建造！', 'error');
-            }
+            } else { addLog('材料不足，无法建造！', 'error'); }
           };
 
           const craftAmmo = () => {
-            const costMoney = 50;
-            const material = '废旧钢材';
+            const costMoney = 50; const material = '废旧钢材';
             if (player.money >= costMoney && countItemInStorage(material) >= 1) {
               const newStorage = removeItemsFromStorage(material, 1);
-              setPlayer(prev => ({
-                ...prev,
-                money: prev.money - costMoney,
-                storage: [...newStorage, { ...ITEMS.ammo_box, type: 'consumable' }]
-              }));
+              setPlayer(prev => ({ ...prev, money: prev.money - costMoney, storage: [...newStorage, { ...ITEMS.ammo_box, type: 'consumable' }] }));
               addLog('制造了 自制弹药箱', 'success');
-            } else {
-              addLog('制造材料或资金不足 ($50 + 废旧钢材)', 'error');
-            }
+            } else { addLog('制造材料或资金不足 ($50 + 废旧钢材)', 'error'); }
           };
 
           const handleEventChoice = (choice) => {
             if (choice.req) {
               if (choice.req.item) {
                 const hasItem = player.storage.some(i => i.id === choice.req.item);
-                if (!hasItem) {
-                  addLog('缺少所需物品！', 'error');
-                  return;
-                }
+                if (!hasItem) { addLog('缺少所需物品！', 'error'); return; }
                 const idx = player.storage.findIndex(i => i.id === choice.req.item);
                 const newStorage = player.storage.filter((_, i) => i !== idx);
                 setPlayer(prev => ({ ...prev, storage: newStorage }));
               }
               if (choice.req.stat) {
-                if (player[choice.req.stat] < choice.req.val) {
-                  addLog('状态不足！', 'error');
-                  return;
-                }
+                if (player[choice.req.stat] < choice.req.val) { addLog('状态不足！', 'error'); return; }
                 setPlayer(prev => ({ ...prev, [choice.req.stat]: prev[choice.req.stat] - choice.req.val }));
               }
             }
@@ -378,75 +441,84 @@
               if (choice.enemyId === 'weak_scavenger') enemyTemplate = { name: '受伤的拾荒者', hp: 15, atk: 4, exp: 20 };
               if (choice.enemyId === 'glitch') enemyTemplate = { name: '?%#ERROR', hp: 60, atk: 12, exp: 0 };
               setRaidState(prev => ({ ...prev, currentEnemy: { ...enemyTemplate, maxHp: enemyTemplate.hp }, isGlitchEnemy: choice.enemyId === 'glitch' }));
-              setScene('combat');
-              return;
+              setScene('combat'); return;
             }
             if (choice.lootChance) {
               if (Math.random() < choice.lootChance) {
                 const loot = generateLootItem(raidState.distance + 500);
                 setRaidState(prev => ({ ...prev, tempLoot: [...prev.tempLoot, loot], currentLootItem: loot }));
-                setScene('event');
-                return;
+                setScene('event'); return;
               }
             }
             setScene('raid');
           };
 
-          // --- 商店与赌博逻辑 ---
           const handleShopClick = (item, type) => {
             if (confirmId === item.id) {
-                if (type === 'gear') buyGear(item);
-                else buyItem(item);
+                if (type === 'gear') buyGear(item); else buyItem(item);
                 setConfirmId(null);
-            } else {
-                setConfirmId(item.id);
-                setTimeout(() => { setConfirmId(prev => prev === item.id ? null : prev); }, 3000);
-            }
+            } else { setConfirmId(item.id); setTimeout(() => { setConfirmId(prev => prev === item.id ? null : prev); }, 3000); }
           };
 
           const handleSpin = () => {
-              if (player.money < betAmount) {
-                  addLog("资金不足！", "error");
-                  return;
+              const isFreeSpin = freeSpins > 0;
+              if (!isFreeSpin && player.money < betAmount) { addLog("资金不足！", "error"); return; }
+              
+              if (!isFreeSpin) {
+                  setPlayer(p => ({ ...p, money: p.money - betAmount }));
+                  setJackpot(prev => prev + Math.floor(betAmount * 0.1));
+                  setSpinCount(prev => prev + 1);
+              } else {
+                  setFreeSpins(prev => prev - 1);
               }
-              setPlayer(p => ({ ...p, money: p.money - betAmount }));
-              setIsSpinning(true);
-              setSlotResult(null);
 
+              setIsSpinning(true); setSlotResult(null); setSlotMoodMsg('');
+              
               setTimeout(() => {
-                  const symbols = ['💀', '🔧', '🔧', '🍗', '🍗', '☢️', '💎', '7️⃣']; // 调整权重
+                  const symbols = ['💀', '🔧', '🔧', '🍗', '🍗', '☢️', '💎', '7️⃣']; 
                   const s1 = symbols[Math.floor(Math.random() * symbols.length)];
                   const s2 = symbols[Math.floor(Math.random() * symbols.length)];
                   const s3 = symbols[Math.floor(Math.random() * symbols.length)];
                   const result = [s1, s2, s3];
-                  
-                  setIsSpinning(false);
-                  setSlotResult(result);
+                  setIsSpinning(false); setSlotResult(result);
 
-                  // 结算
+                  let newFreeSpins = freeSpins;
+                  if (!isFreeSpin && (spinCount + 1) % 20 === 0) {
+                      const gainedSpins = 3 + Math.floor(Math.random() * 4);
+                      setFreeSpins(prev => prev + gainedSpins);
+                      addLog(`🔥 FEVER MODE！获得 ${gainedSpins} 次免费摇奖！`, "success");
+                  }
+
                   let winMult = 0;
                   if (s1 === s2 && s2 === s3) {
-                      if (s1 === '7️⃣') winMult = 50;
-                      else if (s1 === '💎') winMult = 20;
-                      else if (s1 === '💀') winMult = 0; // 3个骷髅倒大霉
-                      else winMult = 10;
-                  } else if (s1 === s2 || s2 === s3 || s1 === s3) {
-                      winMult = 2;
-                  }
+                      if (s1 === '7️⃣') winMult = 20;
+                      else if (s1 === '💎') winMult = 10;
+                      else if (s1 === '💀') winMult = 0; 
+                      else winMult = 5;
+                  } else if (s1 === s2 || s2 === s3 || s1 === s3) { winMult = 1.5; }
+
+                  if (isFreeSpin) winMult *= 2;
 
                   if (winMult > 0) {
-                      const winAmount = betAmount * winMult;
-                      setPlayer(p => ({ ...p, money: p.money + winAmount, mood: Math.min(p.maxMood, p.mood + 10) }));
-                      addLog(`🎰 中奖！获得 $${winAmount} (心情+10)`, "success");
+                      const winAmount = Math.floor(betAmount * winMult);
+                      setPlayer(p => ({ ...p, money: p.money + winAmount, mood: Math.min(p.maxMood, p.mood + 5) }));
+                      addLog(`🎰 中奖！获得 $${winAmount} ${isFreeSpin ? '(FEVER x2)' : ''}`, "success");
+                      setSlotMoodMsg('心情 +5');
                   } else {
-                      setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 5) }));
-                      addLog(`🎰 很遗憾，未中奖 (心情-5)`, "error");
+                      if (spinCount > 648 && Math.random() < 0.01) {
+                          setPlayer(p => ({ ...p, money: p.money + jackpot, mood: 100 }));
+                          setJackpot(12000);
+                          addLog(`🚨🚨🚨 获得大奖池 $${jackpot}！！！🚨🚨🚨`, "success");
+                          setSlotMoodMsg('心情 +100');
+                      } else {
+                          setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 2) }));
+                          addLog(`🎰 未中奖。`, "error");
+                          setSlotMoodMsg('心情 -2');
+                      }
                   }
-
-              }, 1500);
+              }, 1000);
           };
 
-          // ... (买卖使用逻辑保持不变)
           const buyItem = (item) => {
             if (player.money >= item.cost) {
               setPlayer(prev => ({ ...prev, money: prev.money - item.cost, storage: [...prev.storage, { ...item, type: 'consumable' }] }));
@@ -460,13 +532,49 @@
             } else { addLog('资金不足！', 'error'); }
           };
           const sellItem = (index) => {
-            const item = player.storage[index];
-            if (!item) return;
+            const item = player.storage[index]; if (!item) return;
             const sellPrice = item.val || Math.floor(item.cost / 2) || 1;
             const catRelic = player.relics.find(r => r.id === 'cat');
             const finalPrice = catRelic ? Math.floor(sellPrice * 1.2) : sellPrice;
             setPlayer(prev => ({ ...prev, money: prev.money + finalPrice, storage: prev.storage.filter((_, i) => i !== index) }));
             addLog(`出售 ${item.name}，获得 $${finalPrice}`, 'success');
+          };
+          const groupItems = (items) => {
+            const map = new Map();
+            items.forEach(item => {
+              const key = item.id || `${item.type}:${item.name}`;
+              if (!map.has(key)) map.set(key, { key, item, count: 0, totalVal: 0 });
+              const g = map.get(key);
+              g.count += 1; g.totalVal += item.val || 0;
+            });
+            return Array.from(map.values());
+          };
+          const sellOneByKey = (key) => {
+            const idx = player.storage.findIndex(i => (i.id || `${i.type}:${i.name}`) === key);
+            if (idx === -1) return;
+            const item = player.storage[idx];
+            const sellPrice = item.val || Math.floor(item.cost / 2) || 1;
+            const catRelic = player.relics.find(r => r.id === 'cat');
+            const finalPrice = catRelic ? Math.floor(sellPrice * 1.2) : sellPrice;
+            setPlayer(prev => ({ ...prev, money: prev.money + finalPrice, storage: prev.storage.filter((_, i) => i !== idx) }));
+            addLog(`出售 ${item.name}，获得 $${finalPrice}`, 'success');
+          };
+          const useOneByKey = (key) => {
+            const idx = player.storage.findIndex(i => (i.id || `${i.type}:${i.name}`) === key);
+            if (idx === -1) return;
+            const item = player.storage[idx];
+            if (item.type === 'relic') {
+               if (player.relics.some(r => r.id === item.id)) { addLog('已装备该遗物。'); return; }
+               setPlayer(prev => ({ ...prev, relics: [...prev.relics, item], storage: prev.storage.filter((_, i) => i !== idx) }));
+               addLog(`装备遗物：${item.name}`, 'success'); return;
+            }
+            if (item.type !== 'consumable') return;
+            let used = false; let newPlayer = { ...player };
+            if (item.effect === 'heal' && player.hp < player.maxHp) { newPlayer.hp = Math.min(player.maxHp, player.hp + item.value); used = true; }
+            else if (item.effect === 'satiety' && player.satiety < player.maxSatiety) { newPlayer.satiety = Math.min(player.maxSatiety, player.satiety + item.value); used = true; }
+            else if (item.effect === 'mood' && player.mood < player.maxMood) { newPlayer.mood = Math.min(player.maxMood, player.mood + item.value); newPlayer.sanity = Math.max(0, player.sanity - 10); used = true; }
+            else if (item.effect === 'sanity' && player.sanity < player.maxSanity) { newPlayer.sanity = Math.min(player.maxSanity, player.sanity + item.value); used = true; }
+            if (used) { newPlayer.storage = player.storage.filter((_, i) => i !== idx); setPlayer(newPlayer); addLog(`使用了 ${item.name}。`, 'success'); }
           };
           const sellAllLoot = () => {
             const lootItems = player.storage.filter(i => i.type === 'loot');
@@ -478,395 +586,470 @@
             addLog(`一键出售杂物，获得 $${totalVal}`, 'success');
           };
           const useItem = (index) => {
-            const item = player.storage[index];
-            if (!item) return;
+            const item = player.storage[index]; if (!item) return;
             if (item.type === 'relic') {
                if (player.relics.some(r => r.id === item.id)) { addLog('已装备该遗物。'); return; }
                setPlayer(prev => ({ ...prev, relics: [...prev.relics, item], storage: prev.storage.filter((_, i) => i !== index) }));
-               addLog(`装备遗物：${item.name}`, 'success');
-               return;
+               addLog(`装备遗物：${item.name}`, 'success'); return;
             }
             if (item.type !== 'consumable') return;
-            let used = false;
-            let newPlayer = { ...player };
+            let used = false; let newPlayer = { ...player };
             if (item.effect === 'heal' && player.hp < player.maxHp) { newPlayer.hp = Math.min(player.maxHp, player.hp + item.value); used = true; }
             else if (item.effect === 'satiety' && player.satiety < player.maxSatiety) { newPlayer.satiety = Math.min(player.maxSatiety, player.satiety + item.value); used = true; }
             else if (item.effect === 'mood' && player.mood < player.maxMood) { newPlayer.mood = Math.min(player.maxMood, player.mood + item.value); newPlayer.sanity = Math.max(0, player.sanity - 10); used = true; }
             else if (item.effect === 'sanity' && player.sanity < player.maxSanity) { newPlayer.sanity = Math.min(player.maxSanity, player.sanity + item.value); used = true; }
-            else if (item.effect === 'buff_atk') { addLog('Buff效果暂未实装', 'error'); used = false; }
-            if (used) {
-               newPlayer.storage = player.storage.filter((_, i) => i !== index);
-               setPlayer(newPlayer);
-               addLog(`使用了 ${item.name}。`, 'success');
-            }
+            if (used) { newPlayer.storage = player.storage.filter((_, i) => i !== index); setPlayer(newPlayer); addLog(`使用了 ${item.name}。`, 'success'); }
           };
 
           const startRaid = () => {
             setRaidState({ distance: 0, dangerLevel: 1, currentEnemy: null, isGlitchEnemy: false, tempLoot: [], currentLootItem: null, currentInteractiveEvent: null });
-            setPlayer(p => ({ ...p, sanity: Math.max(0, p.sanity - 5) }));
-            setScene('raid');
-            addLog('进入废墟... 感觉到这里充满了恶意。');
+            setPlayer(p => ({ ...p, sanity: Math.max(0, p.sanity - 5) })); setScene('raid'); addLog('进入废墟... 感觉到这里充满了恶意。');
           };
-
           const generateLootItem = (dist) => {
-            const rand = Math.random() * 100;
-            const luckBonus = Math.floor(dist / 100); 
-            const moodBonus = player.mood > 80 ? 5 : 0;
+            const rand = Math.random() * 100; const luckBonus = Math.floor(dist / 100); const moodBonus = player.mood > 80 ? 5 : 0;
             let targetRarity = 'white';
             if (dist > 3000 && Math.random() > 0.98) targetRarity = 'special';
-            else {
-                const score = rand + luckBonus + moodBonus;
-                if (score > 140) targetRarity = 'gold';       
-                else if (score > 115) targetRarity = 'purple';
-                else if (score > 90) targetRarity = 'blue';
-                else if (score > 60) targetRarity = 'green';
-                else targetRarity = 'white';
-            }
-            let pool = LOOT_DB.filter(i => i.rarity === targetRarity);
-            if (pool.length === 0) pool = LOOT_DB.filter(i => i.rarity === 'white');
+            else { const score = rand + luckBonus + moodBonus; if (score > 140) targetRarity = 'gold'; else if (score > 115) targetRarity = 'purple'; else if (score > 90) targetRarity = 'blue'; else if (score > 60) targetRarity = 'green'; else targetRarity = 'white'; }
+            let pool = LOOT_DB.filter(i => i.rarity === targetRarity); if (pool.length === 0) pool = LOOT_DB.filter(i => i.rarity === 'white');
             return pool[Math.floor(Math.random() * pool.length)];
           };
-
           const explore = () => {
-            if (player.satiety <= 0) {
-                addLog('你饿得走不动了... 生命值正在流失！', 'danger');
-                setPlayer(p => ({ ...p, hp: Math.max(0, p.hp - 10) }));
-                if (player.hp <= 10) setScene('gameover');
-                return;
-            }
-            const newDist = raidState.distance + 100;
-            const rng = Math.random();
-            const currentDanger = 1 + Math.floor(newDist / 500);
-            setPlayer(prev => ({ ...prev, satiety: Math.max(0, prev.satiety - 5), sanity: Math.max(0, prev.sanity - 2) }));
+            if (player.satiety <= 0) { addLog('你饿得走不动了... 生命值正在流失！', 'danger'); setPlayer(p => ({ ...p, hp: Math.max(0, p.hp - 10) })); if (player.hp <= 10) setScene('gameover'); return; }
+            const newDist = raidState.distance + 100; const rng = Math.random(); const currentDanger = 1 + Math.floor(newDist / 500);
+            const satBase = 5, sanBase = 2;
+            let satCost = satBase, sanCost = sanBase;
+            if (player.mood < 15) { satCost += 5; sanCost += 2; }
+            else if (player.mood < 30) { satCost += 2; sanCost += 1; }
+            setPlayer(prev => ({ ...prev, satiety: Math.max(0, prev.satiety - satCost), sanity: Math.max(0, prev.sanity - sanCost) }));
             setRaidState(prev => ({ ...prev, distance: newDist, dangerLevel: currentDanger }));
-            addLog(`深入废墟 ${newDist}m... (饱食-5, San-2)`);
+            addLog(`深入废墟 ${newDist}m... (饱食-${satCost}, San-${sanCost})`);
             if (player.sanity < 50 && Math.random() > 0.7) addLog('你听到耳边有奇怪的低语...', 'danger');
-            if (rng < 0.2) {
-              const event = STORY_EVENTS[Math.floor(Math.random() * STORY_EVENTS.length)];
-              setRaidState(prev => ({ ...prev, currentInteractiveEvent: event }));
-              setScene('interactive_event');
-              addLog('前方出现异常情况...', 'blue');
-              return;
-            }
+            if (rng < 0.2) { const event = STORY_EVENTS[Math.floor(Math.random() * STORY_EVENTS.length)]; setRaidState(prev => ({ ...prev, currentInteractiveEvent: event })); setScene('interactive_event'); addLog('前方出现异常情况...', 'blue'); return; }
             if (rng < 0.45) { 
               let enemy = null; let isGlitch = false;
-              if (player.sanity < 30 && Math.random() < 0.6) {
-                  isGlitch = true;
-                  const madnessScale = (50 - player.sanity) / 10;
-                  enemy = { name: '?&%#@!', hp: 50 + (madnessScale * 20), maxHp: 50 + (madnessScale * 20), atk: 8 + (madnessScale * 3), exp: 0 };
-              } else {
-                  const enemyPool = ENEMIES.filter((_, idx) => idx < currentDanger);
-                  const enemyTemplate = enemyPool[Math.floor(Math.random() * enemyPool.length)] || ENEMIES[ENEMIES.length-1];
-                  enemy = { ...enemyTemplate, maxHp: enemyTemplate.hp };
-              }
-              setRaidState(prev => ({ ...prev, currentEnemy: enemy, isGlitchEnemy: isGlitch }));
-              setPlayer(p => ({ ...p, sanity: Math.max(0, p.sanity - 5), mood: Math.max(0, p.mood - 2) }));
-              setScene('combat');
+              if (player.sanity < 30 && Math.random() < 0.6) { isGlitch = true; const madnessScale = (50 - player.sanity) / 10; enemy = { name: '?&%#@!', hp: 50 + (madnessScale * 20), maxHp: 50 + (madnessScale * 20), atk: 8 + (madnessScale * 3), exp: 0 }; } 
+              else { const enemyPool = ENEMIES.filter((_, idx) => idx < currentDanger); const enemyTemplate = enemyPool[Math.floor(Math.random() * enemyPool.length)] || ENEMIES[ENEMIES.length-1]; enemy = { ...enemyTemplate, maxHp: enemyTemplate.hp }; }
+              setRaidState(prev => ({ ...prev, currentEnemy: enemy, isGlitchEnemy: isGlitch })); setPlayer(p => ({ ...p, sanity: Math.max(0, p.sanity - 5), mood: Math.max(0, p.mood - 2) })); setScene('combat');
               if (isGlitch) addLog('警告：遭遇不可名状的实体！', 'danger'); else addLog(`遭遇敌对目标：${enemy.name}！`, 'danger');
-            } else if (rng < 0.8) {
-              const lootItem = generateLootItem(newDist);
-              setRaidState(prev => ({ ...prev, tempLoot: [...prev.tempLoot, lootItem], currentLootItem: lootItem }));
-              setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 5) }));
-              addLog(`发现物资：${lootItem.name}`, 'success');
-              setScene('event');
-            } else {
-              setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 1) }));
-              addLog('周围很安静，也许太安静了。');
-            }
+            } else if (rng < 0.8) { const lootItem = generateLootItem(newDist); setRaidState(prev => ({ ...prev, tempLoot: [...prev.tempLoot, lootItem], currentLootItem: lootItem })); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 5) })); addLog(`发现物资：${lootItem.name}`, 'success'); setScene('event'); } 
+            else { setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 1) })); addLog('周围很安静，也许太安静了。'); }
           };
-
           const handleCombat = (action) => {
             if (!raidState.currentEnemy) return;
             if (action === 'attack') {
               let hitChance = 0.9; let critChance = 0.1; let finalAtk = player.weapon.atk;
               const adrenalineRelic = player.relics.find(r => r.id === 'adrenaline');
               if (adrenalineRelic && player.hp < player.maxHp * 0.3) { finalAtk *= 2; addLog('肾上腺素激活！伤害翻倍！', 'blue'); }
-              if (player.mood > 80) { critChance = 0.3; }
-              if (player.mood < 30) { hitChance = 0.6; critChance = 0; }
+              if (player.mood > 80) { critChance = 0.3; } if (player.mood < 30) { hitChance = 0.6; critChance = 0; }
               if (raidState.isGlitchEnemy) { setPlayer(p => ({ ...p, satiety: Math.max(0, p.satiety - 2) })); addLog('攻击这个怪物让你感到异常疲惫...(饱食-2)', 'danger'); }
-              if (Math.random() > hitChance) {
-                  addLog('你的攻击落空了！(心情低落)', 'error');
-              } else {
+              if (Math.random() > hitChance) { addLog('你的攻击落空了！(心情低落)', 'error'); setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 1) })); } 
+              else {
                   let dmg = Math.max(1, finalAtk + Math.floor(Math.random() * 3));
-                  if (Math.random() < critChance) { dmg = Math.floor(dmg * 1.5); addLog('暴击！', 'success'); }
-                  const remainingEnemyHp = raidState.currentEnemy.hp - dmg;
-                  addLog(`你造成了 ${dmg} 点伤害。`);
+                  if (Math.random() < critChance) { dmg = Math.floor(dmg * 1.5); addLog('暴击！', 'success'); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 1) })); }
+                  const remainingEnemyHp = raidState.currentEnemy.hp - dmg; addLog(`你造成了 ${dmg} 点伤害。`);
                   if (remainingEnemyHp <= 0) {
-                    addLog(`击败了敌人！`, 'success');
-                    const vampireRelic = player.relics.find(r => r.id === 'vampire');
-                    if (vampireRelic) { setPlayer(p => ({ ...p, hp: Math.min(p.maxHp, p.hp + 5) })); addLog('吸血鬼之牙：汲取了 5 点生命。', 'blue'); }
-                    setRaidState(prev => ({ ...prev, currentEnemy: null }));
-                    setScene('raid');
-                    return;
+                      addLog(`击败了敌人！`, 'success');
+                      const enemy = raidState.currentEnemy;
+                      const baseReward = Math.floor(((enemy?.exp || 20) * 1.5) + ((enemy?.atk || 5) * 3));
+                      const moneyReward = Math.max(10, baseReward * raidState.dangerLevel + Math.floor(Math.random() * 20));
+                      const dropItems = [];
+                      if (Math.random() < 0.6) dropItems.push({ ...ITEMS.food, type: 'consumable' });
+                      if (Math.random() < 0.3) dropItems.push({ ...ITEMS.medkit, type: 'consumable' });
+                      if (player.facilities.workbench && Math.random() < 0.2) dropItems.push({ ...ITEMS.ammo_box, type: 'consumable' });
+                      setPlayer(p => ({ ...p, money: p.money + moneyReward, storage: [...p.storage, ...dropItems] }));
+                      addLog(`获得 $${moneyReward}${dropItems.length ? '，并拾取 ' + dropItems.map(i => i.name).join('、') : ''}`, 'success');
+                      const vampireRelic = player.relics.find(r => r.id === 'vampire');
+                      if (vampireRelic) { setPlayer(p => ({ ...p, hp: Math.min(p.maxHp, p.hp + 5) })); addLog('吸血鬼之牙：汲取了 5 点生命。', 'blue'); }
+                      setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 5) }));
+                      setRaidState(prev => ({ ...prev, currentEnemy: null }));
+                      setScene('raid');
+                      return;
                   }
                   setRaidState(prev => ({ ...prev, currentEnemy: { ...prev.currentEnemy, hp: remainingEnemyHp } }));
               }
-              const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def);
-              setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg, mood: Math.max(0, prev.mood - 2) }));
-              addLog(`敌人反击！受到 ${enemyDmg} 点伤害。`, 'danger');
-              if (player.hp - enemyDmg <= 0) setScene('gameover');
+              const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); 
+              setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg, mood: Math.max(0, prev.mood - 2) })); 
+              if(enemyDmg > 0) triggerShake();
+              addLog(`敌人反击！受到 ${enemyDmg} 点伤害。`, 'danger'); if (player.hp - enemyDmg <= 0) setScene('gameover');
             } else if (action === 'flee') {
-               let fleeChance = 0.5;
-               if (player.mood > 80) fleeChance = 0.7;
-               if (player.mood < 30) fleeChance = 0.3;
+               let fleeChance = 0.5; if (player.mood > 80) fleeChance = 0.7; if (player.mood < 30) fleeChance = 0.3;
                if (Math.random() < fleeChance) { addLog('逃跑成功！'); setRaidState(prev => ({ ...prev, currentEnemy: null })); setScene('raid'); }
-               else { addLog('逃跑失败！被敌人追上了。', 'danger'); const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg })); if (player.hp - enemyDmg <= 0) setScene('gameover'); }
+               else { addLog('逃跑失败！被敌人追上了。', 'danger'); const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg })); triggerShake(); if (player.hp - enemyDmg <= 0) setScene('gameover'); }
             }
           };
-
           const evac = () => {
-            const hasSpecial = raidState.tempLoot.some(i => i.rarity === 'special');
             const healAmount = player.facilities.medical ? 40 : 20;
             setPlayer(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + healAmount), sanity: Math.min(prev.maxSanity, prev.sanity + 20), mood: Math.min(prev.maxMood, prev.mood + 20), storage: [...prev.storage, ...raidState.tempLoot] }));
-            if (player.facilities.medical) addLog('医疗站为您提供了深度治疗。', 'blue');
-            if (hasSpecial) addLog(`信号发射器已回收！`, 'success');
-            addLog(`撤离成功！物资已转运至仓库。`, 'success');
-            setScene('result');
+            addLog(`撤离成功！物资已转运至仓库。`, 'success'); setScene('result');
           };
+          const resetGame = () => { setPlayer({ hp: 100, maxHp: 100, satiety: 100, maxSatiety: 100, mood: 100, maxMood: 100, sanity: 100, maxSanity: 100, money: 500, weapon: GEAR.knife, armor: GEAR.clothes, relics: [], facilities: {}, inventory: [], storage: [], }); setScene('intro'); setIntroStep(0); setLogs(['重新开始。祝你好运，行者。']); }
+          
+          const CRTOverlay = () => { const glitchIntensity = player.sanity < 30 ? 'opacity-30' : 'opacity-0'; return ( <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden rounded-lg"> <div className="scanline"></div> <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.2)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] pointer-events-none" /> <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.4)_100%)] pointer-events-none" /> <div className={`absolute inset-0 bg-noise mix-blend-overlay ${glitchIntensity} pointer-events-none transition-opacity duration-1000`}></div> {player.sanity < 50 && ( <div className="absolute top-2 left-2 text-[10px] text-red-500 animate-pulse font-bold tracking-widest">⚠ MENTAL CRITICAL</div> )} </div> ); };
 
-          const resetGame = () => {
-            setPlayer({ hp: 100, maxHp: 100, satiety: 100, maxSatiety: 100, mood: 100, maxMood: 100, sanity: 100, maxSanity: 100, money: 200, weapon: GEAR.knife, armor: GEAR.clothes, relics: [], facilities: {}, inventory: [], storage: [], });
-            setScene('home'); setLogs(['重新开始。祝你好运，行者。']);
-          }
+          useEffect(() => {
+              if (scene === 'intro') {
+                  if (introStep < introTexts.length) {
+                      const timer = setTimeout(() => {
+                          setIntroStep(prev => prev + 1);
+                      }, 1500);
+                      return () => clearTimeout(timer);
+                  }
+              }
+          }, [scene, introStep]);
 
-          const CRTOverlay = () => {
-              const glitchIntensity = player.sanity < 30 ? 'opacity-30' : 'opacity-0';
-              return (
-                <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden rounded-lg">
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.2)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] pointer-events-none" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.4)_100%)] pointer-events-none" />
-                    <div className={`absolute inset-0 bg-noise mix-blend-overlay ${glitchIntensity} pointer-events-none transition-opacity duration-1000`}></div>
-                    {player.sanity < 50 && ( <div className="absolute top-2 left-2 text-[10px] text-red-500 animate-pulse font-bold tracking-widest">⚠ MENTAL CRITICAL</div> )}
-                </div>
-              );
-          };
+          useEffect(() => {
+              if (introEndRef.current) {
+                  introEndRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+          }, [introStep]);
 
           return (
-            <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4 font-mono text-slate-200 select-none">
-              <div className="game-container relative w-full max-w-md bg-slate-800 rounded-2xl p-6 border-b-8 border-r-8 border-slate-950 shadow-2xl">
+            <div className={`min-h-screen bg-neutral-900 flex items-center justify-center p-4 font-mono text-slate-200 select-none ${isShake ? 'shake-anim' : ''}`}>
+              <div className="game-container relative w-full max-w-lg bg-slate-800 rounded-2xl p-6 border-b-8 border-r-8 border-slate-950 shadow-2xl h-[140vh] flex flex-col my-8">
                 
-                <div className="mb-4 flex justify-between items-end border-b-4 border-slate-600 pb-2">
-                   <div>
-                     <h1 className="text-3xl text-yellow-500 leading-none mb-1 tracking-wider">废土行动</h1>
-                     <span className="text-lg text-slate-400">EXTRACTION RPG</span>
-                   </div>
-                   <div className="text-right">
-                     <div className="text-green-400 text-2xl flex items-center gap-1 justify-end">
-                        <span className="text-sm">$</span> {player.money}
-                     </div>
-                     <div className="text-xl text-slate-500">DAY {Math.floor(raidState.distance / 1000) + 1}</div>
-                   </div>
-                </div>
+                {scene !== 'intro' && (
+                    <div className="mb-2 flex-none border-b-4 border-slate-600 pb-2">
+                       <div className="flex justify-between items-end mb-2">
+                           <div>
+                             <h1 className="text-3xl text-yellow-500 leading-none mb-1 tracking-wider">废土行动</h1>
+                             <span className="text-lg text-slate-400">EXTRACTION RPG</span>
+                           </div>
+                           <div className="text-right">
+                             <div className="text-green-400 text-2xl flex items-center gap-1 justify-end font-bold">
+                                <span className="text-sm">$</span> {player.money.toLocaleString()}
+                             </div>
+                             <div className="text-lg text-slate-500">DAY {Math.floor(raidState.distance / 1000) + 1}</div>
+                           </div>
+                       </div>
+                       <div className="px-1">
+                            <div className="flex justify-between text-[10px] text-yellow-600 mb-1 font-bold">
+                                <span>撤离飞船启动资金进度</span>
+                                <span>{Math.floor((player.money/WIN_GOAL)*100)}%</span>
+                            </div>
+                            <div className="h-1 bg-slate-900 border border-slate-700 rounded-full overflow-hidden">
+                                <div className="h-full bg-yellow-500 transition-all duration-1000" style={{width: `${Math.min(100, (player.money/WIN_GOAL)*100)}%`}}></div>
+                            </div>
+                       </div>
+                    </div>
+                )}
 
-                <div className="relative bg-[#1a1c21] border-4 border-slate-700 rounded-lg min-h-[500px] flex flex-col justify-between overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]">
+                <div className="relative bg-[#1a1c21] border-4 border-slate-700 rounded-lg flex-1 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] min-h-0">
                     <CRTOverlay />
                     
-                    <div className="relative z-10 p-5 flex-1 flex flex-col h-full overflow-hidden">
-                        
-                        {/* 状态栏：战斗外显示，战斗时隐藏以腾出空间 */}
-                        {scene !== 'combat' && (
-                            <div className="bg-slate-800/80 p-3 rounded mb-4 border border-slate-600 backdrop-blur-sm grid grid-cols-2 gap-x-4 gap-y-2 flex-none">
-                                <div className="col-span-2">
-                                     <div className="flex justify-between text-sm text-slate-400 mb-1">
-                                        <span>HP {player.hp}/{player.maxHp}</span>
-                                        <span className="flex gap-1">{player.relics.map((r,i) => <Gem key={i} size={12} className="text-purple-400"/>)}</span>
-                                     </div>
-                                     <ProgressBar current={player.hp} max={player.maxHp} color="bg-red-600" icon={<Heart size={14} className="text-red-500"/>} />
-                                </div>
-                                
-                                <div>
-                                     <ProgressBar current={player.satiety} max={player.maxSatiety} color="bg-yellow-600" icon={<Utensils size={14} className="text-yellow-500"/>} />
-                                     <div className="flex justify-between text-xs text-slate-500 mt-0.5">
-                                        <span>饱食</span><span>{player.satiety}/{player.maxSatiety}</span>
-                                     </div>
-                                </div>
-                                <div>
-                                     <ProgressBar current={player.sanity} max={player.maxSanity} color="bg-blue-600" icon={<Activity size={14} className="text-blue-500"/>} />
-                                     <div className="flex justify-between text-xs text-slate-500 mt-0.5">
-                                        <span>理智</span><span>{player.sanity}/{player.maxSanity}</span>
-                                     </div>
-                                </div>
-                                <div className="col-span-2">
-                                     <ProgressBar current={player.mood} max={player.maxMood} color="bg-purple-500" icon={<Smile size={14} className="text-purple-400"/>} />
-                                     <div className="flex justify-between text-xs text-slate-500 mt-0.5">
-                                        <span>心情</span><span>{player.mood}/{player.maxMood}</span>
-                                     </div>
-                                </div>
+                    {scene === 'intro' && (
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6 bg-black z-20 overflow-y-auto relative w-full h-full" onClick={() => setIntroStep(prev => Math.min(prev + 1, introTexts.length))}>
+                            <button onClick={(e) => { e.stopPropagation(); setIntroStep(introTexts.length); }} className="absolute top-4 right-4 text-slate-600 text-sm border border-slate-700 px-2 py-1 rounded hover:text-slate-400 z-50">SKIP >></button>
+                            <div className="space-y-4 w-full max-w-lg z-10">
+                                {introTexts.slice(0, introStep + 1).map((text, i) => (
+                                    <p key={i} className={`text-green-500 text-lg leading-relaxed animate-in fade-in slide-in-from-bottom-2 duration-500 ${i === introTexts.length -1 ? 'text-red-500 font-bold' : 'opacity-80'}`}>
+                                        {text}
+                                    </p>
+                                ))}
+                                <div ref={introEndRef}></div>
                             </div>
-                        )}
+                            {introStep >= introTexts.length ? (
+                                <button onClick={(e) => { e.stopPropagation(); setScene('home'); setLogs(["欢迎回来。当前的撤离目标是筹齐 $200,000。"]); }} className="mt-8 px-8 py-3 bg-green-900/50 border-2 border-green-500 text-green-400 text-2xl hover:bg-green-800 animate-pulse mb-8 z-50 pointer-events-auto">INITIALIZE ></button>
+                            ) : (
+                                <div className="text-slate-600 text-sm animate-pulse mt-8">点击屏幕加速...</div>
+                            )}
+                        </div>
+                    )}
 
-                        {/* --- SCENES --- */}
-
-                        {scene === 'home' && (
-                          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center fade-in overflow-y-auto">
-                            <div className="grid grid-cols-2 gap-4 w-full">
-                                <PixelCard onClick={() => { setScene('shop'); setShopTab('buy'); }}>
-                                    <div className="flex flex-col items-center py-2">
-                                        <ShoppingBag className="mb-2 text-yellow-500" size={32} />
-                                        <span className="text-2xl">黑市交易</span>
+                    {scene !== 'intro' && (
+                        <div className="relative z-10 p-4 flex-1 flex flex-col h-full overflow-hidden min-h-0">
+                            {scene !== 'victory' && (
+                                <div className="bg-slate-800/80 p-3 rounded mb-4 border border-slate-600 backdrop-blur-sm grid grid-cols-2 gap-x-4 gap-y-2 flex-none">
+                                    <div className="col-span-2">
+                                         <div className="flex justify-between text-sm text-slate-400 mb-1">
+                                            <span>HP {player.hp}/{player.maxHp}</span>
+                                            <span className="flex gap-1">{player.relics.map((r,i) => <Gem key={i} size={12} className="text-purple-400"/>)}</span>
+                                         </div>
+                                         <ProgressBar current={player.hp} max={player.maxHp} color="bg-red-600" icon={<Heart size={14} className="text-red-500"/>} />
                                     </div>
-                                </PixelCard>
-                                <PixelCard onClick={() => setScene('hideout')}>
-                                    <div className="flex flex-col items-center py-2">
-                                        <Hammer className="mb-2 text-orange-500" size={32} />
-                                        <span className="text-2xl">藏身处</span>
+                                    <div>
+                                         <ProgressBar current={player.satiety} max={player.maxSatiety} color="bg-yellow-600" icon={<Utensils size={14} className="text-yellow-500"/>} />
+                                         <div className="flex justify-between text-xs text-slate-500 mt-0.5">
+                                            <span>饱食</span><span>{player.satiety}/{player.maxSatiety}</span>
+                                         </div>
                                     </div>
-                                </PixelCard>
-                                <PixelCard onClick={startRaid}>
-                                    <div className="flex flex-col items-center py-2">
-                                        <LogOut className="mb-2 text-red-500" size={32} />
-                                        <span className="text-2xl">开始探索</span>
+                                    <div>
+                                         <ProgressBar current={player.sanity} max={player.maxSanity} color="bg-blue-600" icon={<Activity size={14} className="text-blue-500"/>} />
+                                         <div className="flex justify-between text-xs text-slate-500 mt-0.5">
+                                            <span>理智</span><span>{player.sanity}/{player.maxSanity}</span>
+                                         </div>
                                     </div>
-                                </PixelCard>
-                                <PixelCard onClick={() => setScene('storage')}>
-                                   <div className="flex flex-col items-center py-2">
-                                        <Briefcase className="mb-2 text-blue-500" size={32} />
-                                        <span className="text-2xl">物资仓库</span>
-                                    </div>
-                                </PixelCard>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 商店场景 - 彻底修复布局，标题栏固定 */}
-                        {scene === 'shop' && (
-                            <div className="flex-1 flex flex-col h-full overflow-hidden fade-in min-h-0">
-                                {/* 固定头部 */}
-                                <div className="flex-none bg-[#1a1c21] z-10 border-b border-slate-700 pb-2 mb-2">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-2xl text-yellow-500 tracking-widest">=== 黑市 ===</span>
-                                        <span className="text-green-400 text-xl flex items-center gap-1"><Coins size={20}/> ${player.money}</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={() => setShopTab('buy')} className={`py-1 text-lg rounded ${shopTab === 'buy' ? 'bg-yellow-700 text-white' : 'bg-slate-800 text-slate-400'}`}>补给</button>
-                                        <button onClick={() => setShopTab('gamble')} className={`py-1 text-lg rounded ${shopTab === 'gamble' ? 'bg-purple-700 text-white' : 'bg-slate-800 text-slate-400'}`}>赌场</button>
+                                    <div className="col-span-2">
+                                         <ProgressBar current={player.mood} max={player.maxMood} color="bg-purple-500" icon={<Smile size={14} className="text-purple-400"/>} />
+                                         <div className="flex justify-between text-xs text-slate-500 mt-0.5">
+                                            <span>心情</span><span>{player.mood}/{player.maxMood}</span>
+                                         </div>
                                     </div>
                                 </div>
+                            )}
 
-                                {/* 滚动内容区域 */}
-                                <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-2">
-                                    {shopTab === 'buy' ? (
-                                        <>
-                                            <h3 className="text-base text-slate-500 uppercase tracking-widest border-b border-slate-700/50 mt-2">生存补给</h3>
-                                            {Object.values(ITEMS).filter(i => i.cost > 0).map(item => (
-                                                <div key={item.id} onClick={() => handleShopClick(item, 'item')} 
-                                                     className={`group p-3 border cursor-pointer flex justify-between items-center rounded transition-all duration-200 ${
-                                                         confirmId === item.id 
-                                                         ? 'bg-yellow-900/30 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' 
-                                                         : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700 hover:border-blue-600/50'
-                                                     }`}>
-                                                    <div>
-                                                        <div className={`text-2xl ${confirmId === item.id ? 'text-yellow-400 font-bold' : 'text-blue-400 group-hover:text-blue-300'}`}>
-                                                            {confirmId === item.id ? `确认购买?` : item.name}
-                                                        </div>
-                                                        <div className="text-lg text-slate-500">{confirmId === item.id ? '再次点击确认' : item.desc}</div>
-                                                    </div>
-                                                    <div className="text-2xl font-bold text-yellow-500">${item.cost}</div>
-                                                </div>
-                                            ))}
-                                            
-                                            <h3 className="text-base text-slate-500 uppercase tracking-widest border-b border-slate-700/50 mt-4">武器 & 护甲</h3>
-                                            {Object.values(GEAR).filter(g => g.cost > 0).map(item => (
-                                                <div key={item.id} onClick={() => handleShopClick(item, 'gear')} 
-                                                     className={`group p-3 border cursor-pointer flex justify-between items-center rounded transition-all duration-200 ${
-                                                         confirmId === item.id 
-                                                         ? 'bg-yellow-900/30 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' 
-                                                         : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700 hover:border-yellow-600/50'
-                                                     }`}>
-                                                    <div>
-                                                        <div className={`text-2xl ${confirmId === item.id ? 'text-yellow-400 font-bold' : 'text-green-400 group-hover:text-green-300'}`}>
-                                                            {confirmId === item.id ? `确认购买?` : item.name}
-                                                        </div>
-                                                        <div className="text-lg text-slate-500">{confirmId === item.id ? '再次点击确认' : item.desc}</div>
-                                                    </div>
-                                                    <div className="text-2xl font-bold text-yellow-500">${item.cost}</div>
-                                                </div>
-                                            ))}
-                                        </>
-                                    ) : (
-                                        <div className="flex flex-col items-center pt-4">
-                                            <h3 className="text-xl text-purple-400 mb-4 flex items-center gap-2"><Dices /> 废土老虎机</h3>
-                                            
-                                            <SlotMachine bet={betAmount} onSpin={handleSpin} result={slotResult} isSpinning={isSpinning} />
-                                            
-                                            <div className="flex gap-4 mt-4 w-full justify-center">
-                                                <button onClick={() => setBetAmount(Math.max(10, betAmount - 10))} className="bg-slate-700 px-4 py-2 rounded border border-slate-500">-</button>
-                                                <div className="bg-black/50 px-6 py-2 rounded text-xl border border-slate-600 w-32 text-center text-yellow-500">${betAmount}</div>
-                                                <button onClick={() => setBetAmount(Math.min(player.money, betAmount + 10))} className="bg-slate-700 px-4 py-2 rounded border border-slate-500">+</button>
+                            {scene === 'home' && (
+                              <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center fade-in overflow-y-auto">
+                                <div className="grid grid-cols-2 gap-4 w-full">
+                                    {player.money >= WIN_GOAL && (
+                                        <PixelCard onClick={() => setScene('victory')} className="col-span-2 bg-yellow-900/40 border-yellow-500 fever-mode py-6 victory-pulse">
+                                            <div className="flex flex-col items-center">
+                                                <Rocket className="mb-2 text-yellow-400" size={48} />
+                                                <span className="text-3xl text-yellow-400 font-bold tracking-widest">终极撤离</span>
+                                                <span className="text-sm text-yellow-600 mt-1 uppercase">激活飞船协议</span>
                                             </div>
-                                            <button onClick={() => setBetAmount(Math.min(player.money, 500))} className="text-xs text-slate-500 mt-2 underline">MAX BET ($500)</button>
+                                        </PixelCard>
+                                    )}
+                                    <PixelCard onClick={() => { setScene('shop'); setShopTab('buy'); }}>
+                                        <div className="flex flex-col items-center py-2">
+                                            <ShoppingBag className="mb-2 text-yellow-500" size={32} />
+                                            <span className="text-2xl">黑市交易</span>
+                                        </div>
+                                    </PixelCard>
+                                    <PixelCard onClick={() => setScene('hideout')}>
+                                        <div className="flex flex-col items-center py-2">
+                                            <Hammer className="mb-2 text-orange-500" size={32} />
+                                            <span className="text-2xl">藏身处</span>
+                                        </div>
+                                    </PixelCard>
+                                    <PixelCard onClick={startRaid}>
+                                        <div className="flex flex-col items-center py-2">
+                                            <LogOut className="mb-2 text-red-500" size={32} />
+                                            <span className="text-2xl">开始探索</span>
+                                        </div>
+                                    </PixelCard>
+                                    <PixelCard onClick={() => setScene('storage')}>
+                                       <div className="flex flex-col items-center py-2">
+                                            <Briefcase className="mb-2 text-blue-500" size={32} />
+                                            <span className="text-2xl">物资仓库</span>
+                                        </div>
+                                    </PixelCard>
+                                    <PixelCard onClick={() => setScene('equipment')}>
+                                       <div className="flex flex-col items-center py-2">
+                                            <Shield className="mb-2 text-slate-300" size={32} />
+                                            <span className="text-2xl">角色装备</span>
+                                        </div>
+                                    </PixelCard>
+                                </div>
+                              </div>
+                            )}
+
+                            {scene === 'shop' && (
+                                <div className="flex-1 flex flex-col h-full overflow-hidden fade-in min-h-0">
+                                    <div className="flex-none bg-[#1a1c21] z-10 border-b border-slate-700 pb-2 mb-2">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-2xl text-yellow-500 tracking-widest">=== 黑市 ===</span>
+                                            <span className="text-green-400 text-xl flex items-center gap-1"><Coins size={20}/> ${player.money.toLocaleString()}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button onClick={() => setShopTab('buy')} className={`py-1 text-lg rounded ${shopTab === 'buy' ? 'bg-yellow-700 text-white' : 'bg-slate-800 text-slate-400'}`}>补给</button>
+                                            <button onClick={() => setShopTab('gamble')} className={`py-1 text-lg rounded ${shopTab === 'gamble' ? 'bg-purple-700 text-white' : 'bg-slate-800 text-slate-400'}`}>赌场</button>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-2 min-h-0">
+                                        {shopTab === 'buy' ? (
+                                            <>
+                                                <h3 className="text-base text-slate-500 uppercase tracking-widest border-b border-slate-700/50 mt-2">生存补给</h3>
+                                                {Object.values(ITEMS).filter(i => i.cost > 0).map(item => (
+                                                    <div key={item.id} onClick={() => handleShopClick(item, 'item')} className={`group p-3 border cursor-pointer flex justify-between items-center rounded transition-all duration-200 ${confirmId === item.id ? 'bg-yellow-900/30 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700 hover:border-blue-600/50'}`}>
+                                                        <div>
+                                                            <div className={`text-2xl ${confirmId === item.id ? 'text-yellow-400 font-bold' : 'text-blue-400 group-hover:text-blue-300'}`}>{confirmId === item.id ? `确认购买?` : item.name}</div>
+                                                            <div className="text-lg text-slate-500">{confirmId === item.id ? '再次点击确认' : item.desc}</div>
+                                                        </div>
+                                                        <div className="text-2xl font-bold text-yellow-500">${item.cost}</div>
+                                                    </div>
+                                                ))}
+                                                <h3 className="text-base text-slate-500 uppercase tracking-widest border-b border-slate-700/50 mt-4">武器 & 护甲</h3>
+                                                {Object.values(GEAR).filter(g => g.cost > 0).map(item => (
+                                                    <div key={item.id} onClick={() => handleShopClick(item, 'gear')} className={`group p-3 border cursor-pointer flex justify-between items-center rounded transition-all duration-200 ${confirmId === item.id ? 'bg-yellow-900/30 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700 hover:border-yellow-600/50'}`}>
+                                                        <div>
+                                                            <div className={`text-2xl ${confirmId === item.id ? 'text-yellow-400 font-bold' : 'text-green-400 group-hover:text-green-300'}`}>{confirmId === item.id ? `确认购买?` : item.name}</div>
+                                                            <div className="text-lg text-slate-500">{confirmId === item.id ? '再次点击确认' : item.desc}</div>
+                                                        </div>
+                                                        <div className="text-2xl font-bold text-yellow-500">${item.cost}</div>
+                                                    </div>
+                                                ))}
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center pt-2">
+                                                <SlotMachine bet={betAmount} onSpin={handleSpin} result={slotResult} isSpinning={isSpinning} jackpot={jackpot} spinCount={spinCount} freeSpins={freeSpins} moodMsg={slotMoodMsg} />
+                                                <div className="flex gap-4 mt-2 w-full justify-center">
+                                                    <button onClick={() => setBetAmount(Math.max(10, betAmount - 10))} className="bg-slate-700 px-4 py-2 rounded border border-slate-500 text-xl">-</button>
+                                                    <div className="bg-black/50 px-6 py-2 rounded text-xl border border-slate-600 w-32 text-center text-yellow-500">${betAmount}</div>
+                                                    <button onClick={() => setBetAmount(Math.min(player.money, betAmount + 10))} className="bg-slate-700 px-4 py-2 rounded border border-slate-500 text-xl">+</button>
+                                                </div>
+                                                <button onClick={() => setBetAmount(Math.min(player.money, 500))} className="text-sm text-slate-500 mt-2 underline">MAX BET ($500)</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex-none pt-3 border-t border-slate-700 mt-2">
+                                        <button onClick={() => setScene('home')} className="w-full bg-slate-700 p-3 text-xl hover:bg-slate-600 border border-slate-500 text-slate-300 rounded">返回安全屋</button>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {scene === 'combat' && raidState.currentEnemy && (
+                                <div className="flex-1 flex flex-col h-full overflow-hidden fade-in justify-between">
+                                   <div className="text-center mt-4">
+                                      <div className={`inline-block p-4 rounded-full bg-slate-800 border-4 border-red-800 mb-2 ${raidState.isGlitchEnemy ? 'animate-pulse' : ''}`}><Skull size={64} className="text-red-500" /></div>
+                                      <h2 className="text-3xl text-red-500 font-bold tracking-widest">{raidState.currentEnemy.name}</h2>
+                                      <div className="w-2/3 mx-auto mt-2"><ProgressBar current={raidState.currentEnemy.hp} max={raidState.currentEnemy.maxHp} color="bg-red-600" /></div>
+                                   </div>
+                                   <div className="flex justify-between px-4 text-xl border-t border-b border-slate-700 py-2 bg-black/30"><div className="text-green-400">HP: {player.hp}</div><div className="text-yellow-400">WPN: {player.weapon.atk} DMG</div></div>
+                                   <div className="grid grid-cols-2 gap-4 mb-2">
+                                      <button onClick={() => handleCombat('attack')} className="p-6 bg-red-900/40 border-2 border-red-600 hover:bg-red-800/60 rounded flex flex-col items-center justify-center group"><Sword size={48} className="text-red-500 mb-2" /><span className="text-2xl text-red-300 font-bold">攻击</span></button>
+                                      <button onClick={() => handleCombat('flee')} className="p-6 bg-slate-800 border-2 border-slate-600 hover:bg-slate-700 rounded flex flex-col items-center justify-center group"><Footprints size={48} className="text-slate-400 mb-2" /><span className="text-2xl text-slate-300">逃跑</span></button>
+                                   </div>
+                                </div>
+                            )}
+
+                            {scene === 'hideout' && (
+                              <div className="flex-1 flex flex-col h-full overflow-hidden fade-in min-h-0">
+                                <h2 className="flex-none bg-[#1a1c21] z-10 text-center text-2xl text-orange-400 mb-4 border-b border-slate-700 py-2">=== 设施升级 ===</h2>
+                                <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 pb-2">
+                                    {player.facilities.workbench && (
+                                        <div className="bg-slate-800 p-3 mb-4 rounded border border-blue-500/50">
+                                            <h3 className="text-lg text-blue-400 mb-2">精密工作台</h3>
+                                            <button onClick={craftAmmo} className="w-full bg-slate-700 hover:bg-slate-600 text-lg py-2 rounded border border-slate-600">制造弹药箱 ($50 + 1废钢)</button>
                                         </div>
                                     )}
-                                </div>
-
-                                {/* 固定底部按钮 */}
-                                <div className="flex-none pt-3 border-t border-slate-700 mt-2">
-                                    <button onClick={() => setScene('home')} className="w-full bg-slate-700 p-3 text-xl hover:bg-slate-600 border border-slate-500 text-slate-300 rounded">返回安全屋</button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 藏身处 - 同样修复固定头部 */}
-                        {scene === 'hideout' && (
-                          <div className="flex-1 flex flex-col h-full overflow-hidden fade-in min-h-0">
-                            <h2 className="flex-none bg-[#1a1c21] z-10 text-center text-2xl text-orange-400 mb-4 border-b border-slate-700 py-2">=== 设施升级 ===</h2>
-                            
-                            <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 pb-2">
-                                {player.facilities.workbench && (
-                                    <div className="bg-slate-800 p-3 mb-4 rounded border border-blue-500/50">
-                                        <h3 className="text-lg text-blue-400 mb-2">精密工作台</h3>
-                                        <button onClick={craftAmmo} className="w-full bg-slate-700 hover:bg-slate-600 text-lg py-2 rounded border border-slate-600">
-                                            制造弹药箱 ($50 + 1废钢)
-                                        </button>
-                                    </div>
-                                )}
-
-                                {Object.entries(FACILITIES).map(([key, fac]) => {
-                                    const isBuilt = player.facilities[key];
-                                    return (
-                                        <div key={key} className={`p-3 border rounded ${isBuilt ? 'border-green-500/50 bg-green-900/10' : 'border-slate-600 bg-slate-800'}`}>
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className={`text-xl ${isBuilt ? 'text-green-400' : 'text-slate-200'}`}>{fac.name}</span>
-                                                {isBuilt && <span className="text-sm bg-green-900 text-green-300 px-2 rounded">已建造</span>}
-                                            </div>
-                                            <p className="text-sm text-slate-400 mb-2">{fac.desc}</p>
-                                            
-                                            {!isBuilt && (
-                                                <div className="mt-2">
-                                                    <div className="text-sm text-slate-500 mb-1">所需材料:</div>
-                                                    <div className="grid grid-cols-2 gap-1 mb-2">
-                                                        {Object.entries(fac.cost).map(([mat, count]) => {
-                                                            const has = countItemInStorage(mat);
-                                                            return (
-                                                                <span key={mat} className={`text-sm ${has >= count ? 'text-green-500' : 'text-red-500'}`}>
-                                                                    {mat}: {has}/{count}
-                                                                </span>
-                                                            )
-                                                        })}
+                                    {Object.entries(FACILITIES).map(([key, fac]) => {
+                                        const isBuilt = player.facilities[key];
+                                        return (
+                                            <div key={key} className={`p-3 border rounded ${isBuilt ? 'border-green-500/50 bg-green-900/10' : 'border-slate-600 bg-slate-800'}`}>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className={`text-xl ${isBuilt ? 'text-green-400' : 'text-slate-200'}`}>{fac.name}</span>
+                                                    {isBuilt && <span className="text-sm bg-green-900 text-green-300 px-2 rounded">已建造</span>}
+                                                </div>
+                                                <p className="text-sm text-slate-400 mb-2">{fac.desc}</p>
+                                                {!isBuilt && (
+                                                    <div className="mt-2">
+                                                        <div className="text-sm text-slate-500 mb-1">所需材料:</div>
+                                                        <div className="grid grid-cols-2 gap-1 mb-2">
+                                                            {Object.entries(fac.cost).map(([mat, count]) => {
+                                                                const has = countItemInStorage(mat);
+                                                                return ( <span key={mat} className={`text-sm ${has >= count ? 'text-green-500' : 'text-red-500'}`}>{mat}: {has}/{count}</span> )
+                                                            })}
+                                                        </div>
+                                                        <button onClick={() => upgradeFacility(key)} className="w-full bg-orange-700 hover:bg-orange-600 text-white text-lg py-2 rounded">建造设施</button>
                                                     </div>
-                                                    <button onClick={() => upgradeFacility(key)} className="w-full bg-orange-700 hover:bg-orange-600 text-white text-lg py-2 rounded">
-                                                        建造设施
-                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div className="flex-none pt-3 border-t border-slate-700 mt-2"><button onClick={() => setScene('home')} className="w-full bg-slate-700 p-3 text-xl hover:bg-slate-600 border border-slate-500 text-slate-300 rounded">返回</button></div>
+                              </div>
+                            )}
+
+                            {scene === 'storage' && (
+                                <div className="flex-1 flex flex-col h-full overflow-hidden fade-in min-h-0">
+                                    <div className="flex-none flex justify-between items-center border-b border-slate-700 pb-2 mb-2 pt-2 bg-[#1a1c21]">
+                                        <h2 className="text-2xl text-blue-400 tracking-widest">=== 仓库管理 ===</h2>
+                                        <button onClick={sellAllLoot} className="text-base bg-red-900/50 text-red-300 px-3 py-1 rounded hover:bg-red-800 border border-red-700 flex items-center gap-1"><Trash2 size={16} /> 一键卖杂物</button>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1 pb-2">
+                                        {player.storage.length === 0 ? <div className="text-center text-slate-600 mt-10 text-xl">仓库空空如也...</div> : 
+                                            groupItems(player.storage).map((g, idx) => (
+                                                <div key={idx} className={`p-3 border rounded flex justify-between items-center ${RARITY_CONFIG[g.item.rarity || 'white'].border} ${RARITY_CONFIG[g.item.rarity || 'white'].bg}`}>
+                                                    <div><div className={`${RARITY_CONFIG[g.item.rarity || 'white'].color} text-xl`}>{g.item.name}*{g.count}</div></div>
+                                                    <div className="flex gap-2">
+                                                        {g.item.type === 'consumable' || g.item.type === 'relic' ? (
+                                                            <button onClick={() => useOneByKey(g.key)} className="bg-green-700 hover:bg-green-600 text-white px-3 py-1 text-lg rounded">{g.item.type === 'relic' ? '装备' : '使用'}</button>
+                                                        ) : (
+                                                            <button onClick={() => sellOneByKey(g.key)} className="bg-slate-700 hover:bg-slate-600 text-yellow-400 px-3 py-1 text-lg rounded border border-slate-600 flex items-center gap-1"><Coins size={16}/> ${g.item.val}</button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                    <div className="flex-none pt-3 border-t border-slate-700 mt-2"><button onClick={() => setScene('home')} className="w-full bg-slate-700 p-3 text-xl hover:bg-slate-600 border border-slate-500 text-slate-300 rounded">返回</button></div>
+                                </div>
+                            )}
+
+                            {scene === 'equipment' && (
+                                <div className="flex-1 flex flex-col h-full overflow-hidden fade-in min-h-0">
+                                    <div className="flex-none flex justify-between items-center border-b border-slate-700 pb-2 mb-2 pt-2 bg-[#1a1c21]">
+                                        <h2 className="text-2xl text-slate-300 tracking-widest">=== 装备 ===</h2>
+                                        <div className="text-slate-400 text-base">WPN {player.weapon.atk} / ARM {player.armor.def}</div>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pr-1 pb-2">
+                                        <div className="p-3 border rounded bg-slate-800 border-slate-600">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Sword className="text-red-500" size={24} />
+                                                    <span className="text-xl text-red-400">{player.weapon.name}</span>
+                                                </div>
+                                                <div className="text-red-400 text-lg">ATK {player.weapon.atk}</div>
+                                            </div>
+                                            <div className="text-slate-400 text-base mt-1">{player.weapon.desc}</div>
+                                        </div>
+                                        <div className="p-3 border rounded bg-slate-800 border-slate-600">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Shield className="text-blue-500" size={24} />
+                                                    <span className="text-xl text-blue-400">{player.armor.name}</span>
+                                                </div>
+                                                <div className="text-blue-400 text-lg">DEF {player.armor.def || 0}</div>
+                                            </div>
+                                            <div className="text-slate-400 text-base mt-1">{player.armor.desc}</div>
+                                        </div>
+                                        <div className="p-3 border rounded bg-slate-800 border-slate-600">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Gem className="text-purple-400" size={20} />
+                                                    <span className="text-xl text-slate-200">遗物</span>
+                                                </div>
+                                                <div className="text-slate-500 text-sm">{player.relics.length} 件</div>
+                                            </div>
+                                            {player.relics.length === 0 ? (
+                                                <div className="text-center text-slate-600 py-4">未装备遗物</div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {player.relics.map((r, i) => (
+                                                        <div key={i} className={`p-2 border rounded flex justify-between items-center ${RARITY_CONFIG[r.rarity || 'purple'].border} ${RARITY_CONFIG[r.rarity || 'purple'].bg}`}>
+                                                            <div className={`${RARITY_CONFIG[r.rarity || 'purple'].color} text-lg`}>{r.name}</div>
+                                                            <div className="text-slate-400 text-base ml-4 flex-1 text-right">{r.desc}</div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="flex-none pt-3 border-t border-slate-700 mt-2">
-                                <button onClick={() => setScene('home')} className="w-full bg-slate-700 p-3 text-xl hover:bg-slate-600 border border-slate-500 text-slate-300 rounded">返回</button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ... (其他场景代码结构保持不变，仅享受全局字体放大效果) ... */}
-                        
-                        {scene === 'interactive_event' && raidState.currentInteractiveEvent && (
-                            <div className="flex-1 flex flex-col justify-center text-center fade-in overflow-y-auto min-h-0">
-                                <div className="mb-6">
-                                    <HelpCircle size={80} className="mx-auto text-blue-400 mb-4 animate-bounce" />
-                                    <p className="text-2xl text-slate-200 leading-snug">{raidState.currentInteractiveEvent.text}</p>
+                                    </div>
+                                    <div className="flex-none pt-3 border-t border-slate-700 mt-2">
+                                        <button onClick={() => setScene('home')} className="w-full bg-slate-700 p-3 text-xl hover:bg-slate-600 border border-slate-500 text-slate-300 rounded">返回</button>
+                                    </div>
                                 </div>
+                            )}
+
+                            {scene === 'raid' && (
+                                <div className="flex-1 flex flex-col justify-between fade-in h-full">
+                                    <div className="text-center space-y-6 mt-8">
+                                        <div className="relative inline-block"><Footprints className="mx-auto text-slate-600" size={64} /><div className="absolute top-0 right-0 animate-ping h-3 w-3 rounded-full bg-red-500 opacity-75"></div></div>
+                                        <div className="space-y-2"><div className="text-xl text-slate-500">正在搜索区域...</div><div className="text-5xl font-bold text-slate-200 tracking-widest">{raidState.distance}m</div></div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 mt-auto mb-2">
+                                         <PixelCard onClick={explore} className="bg-slate-800 hover:bg-green-900/20 border-green-800/50"><div className="text-center py-2"><span className="text-2xl font-bold text-green-500 block mb-1">&gt; 继续搜寻</span><span className="text-lg text-slate-500">消耗5饱食/2San</span></div></PixelCard>
+                                         <PixelCard onClick={evac} className="bg-slate-800 hover:bg-blue-900/20 border-blue-800/50"><div className="text-center py-2"><span className="text-2xl font-bold text-blue-500 block mb-1">&lt; 呼叫撤离</span></div></PixelCard>
+                                    </div>
+                                </div>
+                            )}
+
+                            {scene === 'event' && raidState.currentLootItem && (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center fade-in">
+                                   <div className={`p-6 bg-slate-900 rounded-full mb-6 border-4 ${RARITY_CONFIG[raidState.currentLootItem.rarity].border} shadow-[0_0_20px_rgba(0,0,0,0.5)]`}>
+                                       {raidState.currentLootItem.rarity === 'special' ? <Radio size={64} className={`${RARITY_CONFIG[raidState.currentLootItem.rarity].color}`} /> : <Briefcase size={64} className={`${RARITY_CONFIG[raidState.currentLootItem.rarity].color}`} />}
+                                   </div>
+                                   <div className="mb-2 text-lg uppercase tracking-widest text-slate-500">{RARITY_CONFIG[raidState.currentLootItem.rarity].label} 物资</div>
+                                   <h2 className={`text-4xl mb-4 tracking-wide ${RARITY_CONFIG[raidState.currentLootItem.rarity].color}`}>{raidState.currentLootItem.name}</h2>
+                                   <div className="text-2xl text-slate-300 mb-8"><p className="bg-slate-800 p-3 rounded border border-slate-600 inline-block px-6">估值: <span className="text-yellow-400 font-bold">${raidState.currentLootItem.val}</span></p></div>
+                                   <button onClick={() => setScene('raid')} className="w-full max-w-[240px] py-4 bg-slate-700 hover:bg-slate-600 text-2xl rounded">收入背包</button>
+                                </div>
+                           )}
+
+                           {scene === 'interactive_event' && raidState.currentInteractiveEvent && (
+                            <div className="flex-1 flex flex-col justify-center text-center fade-in overflow-y-auto min-h-0">
+                                <div className="mb-6"><HelpCircle size={80} className="mx-auto text-blue-400 mb-4 animate-bounce" /><p className="text-2xl text-slate-200 leading-snug">{raidState.currentInteractiveEvent.text}</p></div>
                                 <div className="space-y-3">
                                     {raidState.currentInteractiveEvent.choices.map(choice => (
                                         <button key={choice.id} onClick={() => handleEventChoice(choice)} className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 p-4 rounded text-left group">
@@ -878,129 +1061,80 @@
                             </div>
                         )}
 
-                        {scene === 'storage' && (
-                            <div className="flex-1 flex flex-col h-full overflow-hidden fade-in min-h-0">
-                                <div className="flex-none flex justify-between items-center border-b border-slate-700 pb-2 mb-2 pt-2 bg-[#1a1c21]">
-                                    <h2 className="text-2xl text-blue-400 tracking-widest">=== 仓库管理 ===</h2>
-                                    <button onClick={sellAllLoot} className="text-base bg-red-900/50 text-red-300 px-3 py-1 rounded hover:bg-red-800 border border-red-700 flex items-center gap-1">
-                                        <Trash2 size={16} /> 一键卖杂物
-                                    </button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1 pb-2">
-                                    {player.storage.length === 0 ? <div className="text-center text-slate-600 mt-10 text-xl">仓库空空如也...</div> : 
-                                        player.storage.map((item, idx) => (
-                                            <div key={idx} className={`p-3 border rounded flex justify-between items-center ${RARITY_CONFIG[item.rarity || 'white'].border} ${RARITY_CONFIG[item.rarity || 'white'].bg}`}>
-                                                <div>
-                                                    <div className={`${RARITY_CONFIG[item.rarity || 'white'].color} text-xl`}>{item.name}</div>
-                                                    <div className="text-base text-slate-400 flex gap-2">
-                                                        <span>{item.type === 'consumable' ? '消耗品' : item.type === 'relic' ? '遗物' : '物资'}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    {item.type === 'consumable' || item.type === 'relic' ? (
-                                                        <button onClick={() => useItem(idx)} className="bg-green-700 hover:bg-green-600 text-white px-3 py-1 text-lg rounded">{item.type === 'relic' ? '装备' : '使用'}</button>
-                                                    ) : (
-                                                        <button onClick={() => sellItem(idx)} className="bg-slate-700 hover:bg-slate-600 text-yellow-400 px-3 py-1 text-lg rounded border border-slate-600 flex items-center gap-1"><Coins size={16}/> ${item.val}</button>
-                                                    )}
-                                                </div>
+                            {(scene === 'result' || scene === 'gameover') && (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center fade-in">
+                                    {scene === 'result' ? (
+                                        <>
+                                            <Briefcase size={96} className="text-green-600 mb-6" />
+                                            <h2 className="text-4xl text-green-500 mb-4 tracking-widest">撤离成功</h2>
+                                            <div className="bg-black/20 p-4 rounded border border-slate-700 mb-8 max-h-48 overflow-y-auto w-full">
+                                                <div className="text-base text-slate-500 mb-2 uppercase border-b border-slate-600">获得物品</div>
+                                                {groupItems(raidState.tempLoot).map((g, i) => (<div key={i} className={`flex justify-between text-lg ${RARITY_CONFIG[g.item.rarity].color}`}><span>{g.item.name}*{g.count}</span><span>${g.totalVal}</span></div>))}
+                                                <div className="mt-2 pt-2 border-t border-slate-600 flex justify-between font-bold text-yellow-500 text-xl"><span>总估值</span><span>${raidState.tempLoot.reduce((a,b)=>a+b.val, 0)}</span></div>
                                             </div>
-                                        ))
-                                    }
+                                            <button onClick={() => setScene('storage')} className="px-8 py-4 bg-blue-900/30 border-2 border-blue-800 text-blue-400 text-2xl rounded hover:bg-blue-900/50 transition-colors">前往仓库整理</button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Skull size={96} className="text-slate-700 mb-6" />
+                                            <h2 className="text-4xl text-red-600 mb-4 tracking-widest">行动失败</h2>
+                                            <button onClick={resetGame} className="px-8 py-4 bg-red-900/30 border-2 border-red-800 text-red-400 text-2xl rounded">重新开始</button>
+                                        </>
+                                    )}
                                 </div>
-                                <div className="flex-none pt-3 border-t border-slate-700 mt-2">
-                                    <button onClick={() => setScene('home')} className="w-full bg-slate-700 p-3 text-xl hover:bg-slate-600 border border-slate-500 text-slate-300 rounded">返回</button>
+                            )}
+
+                            {scene === 'victory' && (
+                                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6 bg-black/90 z-20 absolute inset-0 rounded-lg fade-in">
+                                    <div className="animate-bounce mb-4"><Rocket size={80} className="text-yellow-400" /></div>
+                                    <h2 className="text-5xl text-yellow-400 font-bold tracking-[0.2em] mb-4">回归现实</h2>
+                                    <div className="space-y-4 max-w-sm">
+                                        <p className="text-green-400 text-xl leading-relaxed">
+                                            随着最后 $200,000 的汇入，写字楼那沉重的铁门发出了低沉的鸣响。
+                                        </p>
+                                        <p className="text-green-500 text-lg opacity-80 italic">
+                                            刺眼的阳光重新洒落，废墟的影像如破碎的像素点般消散。
+                                        </p>
+                                        <p className="text-green-400 text-xl font-bold">
+                                            你回到了除夕的午夜。
+                                        </p>
+                                        <div className="bg-slate-900 border border-slate-700 p-4 mt-8 rounded">
+                                            <div className="text-slate-500 text-sm uppercase">生存统计</div>
+                                            <div className="text-2xl text-yellow-500 mt-2 font-bold">${player.money.toLocaleString()}</div>
+                                            <div className="text-slate-500 text-sm">逃出生天！</div>
+                                        </div>
+                                    </div>
+                                    <button onClick={resetGame} className="mt-8 px-8 py-4 bg-yellow-900/40 border-2 border-yellow-500 text-yellow-400 text-2xl hover:bg-yellow-800 rounded">再次挑战 ></button>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {scene === 'raid' && (
-                            <div className="flex-1 flex flex-col justify-between fade-in h-full">
-                                <div className="text-center space-y-6 mt-8">
-                                    <div className="relative inline-block"><Footprints className="mx-auto text-slate-600" size={64} /><div className="absolute top-0 right-0 animate-ping h-3 w-3 rounded-full bg-red-500 opacity-75"></div></div>
-                                    <div className="space-y-2"><div className="text-xl text-slate-500">正在搜索区域...</div><div className="text-5xl font-bold text-slate-200 tracking-widest">{raidState.distance}m</div></div>
-                                    <div className="flex justify-center gap-2 mt-2 bg-black/20 py-2"><span className="text-xl text-slate-500 mr-2">威胁等级:</span>{[...Array(raidState.dangerLevel)].map((_, i) => (<AlertTriangle key={i} size={24} className="text-red-500" />))}</div>
+                        </div>
+                    )}
+
+                    {scene !== 'intro' && scene !== 'victory' && (
+                        <div className="h-28 bg-black p-3 overflow-y-auto font-mono text-base md:text-lg border-t-4 border-slate-700 z-10 no-scrollbar flex flex-col-reverse tracking-wide leading-snug flex-none">
+                            {logs.map((log, i) => (
+                                <div key={i} className={`mb-1 border-l-2 pl-2 ${
+                                    log.includes('danger') || log.includes('受到') || log.includes('失败') || log.includes('缺少') ? 'text-red-500 border-red-900' : 
+                                    log.includes('success') || log.includes('获得') || log.includes('出售') || log.includes('建造') ? 'text-green-500 border-green-900' : 
+                                    log.includes('blue') ? 'text-blue-400 border-blue-900' :
+                                    'text-slate-500 border-slate-800'
+                                }`}>
+                                    <span className="opacity-50 mr-2">{log.match(/\[(.*?)\]/)?.[0] || '>'}</span>
+                                    {log.replace(/\[.*?\] /, '').replace('danger', '').replace('success', '').replace('error', '').replace('blue', '')}
                                 </div>
-                                <div className="grid grid-cols-2 gap-4 mt-auto mb-2">
-                                     <PixelCard onClick={explore} className="bg-slate-800 hover:bg-green-900/20 border-green-800/50"><div className="text-center py-2"><span className="text-2xl font-bold text-green-500 block mb-1">&gt; 继续搜寻</span><span className="text-lg text-slate-500">消耗5饱食/2San</span></div></PixelCard>
-                                     <PixelCard onClick={evac} className="bg-slate-800 hover:bg-blue-900/20 border-blue-800/50"><div className="text-center py-2"><span className="text-2xl font-bold text-blue-500 block mb-1">&lt; 呼叫撤离</span><span className="text-lg text-slate-500">带回战利品</span></div></PixelCard>
-                                </div>
-                            </div>
-                        )}
-
-                        {scene === 'event' && raidState.currentLootItem && (
-                             <div className="flex-1 flex flex-col items-center justify-center text-center fade-in">
-                                <div className={`p-6 bg-slate-900 rounded-full mb-6 border-4 ${RARITY_CONFIG[raidState.currentLootItem.rarity].border} shadow-[0_0_20px_rgba(0,0,0,0.5)]`}>
-                                    {raidState.currentLootItem.rarity === 'special' ? <Radio size={64} className={`${RARITY_CONFIG[raidState.currentLootItem.rarity].color}`} /> : <Briefcase size={64} className={`${RARITY_CONFIG[raidState.currentLootItem.rarity].color}`} />}
-                                </div>
-                                <div className="mb-2 text-lg uppercase tracking-widest text-slate-500">{RARITY_CONFIG[raidState.currentLootItem.rarity].label} 物资</div>
-                                <h2 className={`text-4xl mb-4 tracking-wide ${RARITY_CONFIG[raidState.currentLootItem.rarity].color}`}>{raidState.currentLootItem.name}</h2>
-                                <div className="text-2xl text-slate-300 mb-8 space-y-2"><p className="bg-slate-800 p-3 rounded border border-slate-600 inline-block px-6">估值: <span className="text-yellow-400 font-bold">${raidState.currentLootItem.val}</span></p></div>
-                                <button onClick={() => setScene('raid')} className="w-full max-w-[240px] py-4 bg-slate-700 hover:bg-slate-600 text-2xl rounded border-b-4 border-slate-900 active:border-b-0 active:translate-y-1 transition-all">收入背包</button>
-                             </div>
-                        )}
-
-                        {scene === 'combat' && raidState.currentEnemy && (
-                            <div className="flex-1 flex flex-col fade-in h-full">
-                                 <div className="flex-1 flex flex-col items-center justify-center border-b-2 border-slate-700/50 border-dashed pb-6">
-                                    {raidState.isGlitchEnemy ? <div className="text-8xl mb-6 animate-pulse text-red-500 scale-110">?&%#</div> : <div className="text-8xl mb-6 grayscale hover:grayscale-0 transition-all duration-500 cursor-crosshair">👾</div>}
-                                    <div className="text-3xl text-red-500 font-bold mb-4 tracking-wide">{raidState.currentEnemy.name}</div>
-                                    <div className="w-full px-8 mb-2">{raidState.isGlitchEnemy ? <div className="text-center text-red-600 font-bold text-2xl animate-pulse">??? / ???</div> : <ProgressBar current={raidState.currentEnemy.hp} max={raidState.currentEnemy.maxHp} color="bg-purple-600" label="ENEMY" />}</div>
-                                    {!raidState.isGlitchEnemy && <div className="text-xl text-slate-500 mt-2 bg-black/30 px-4 py-1 rounded">ATK: <span className="text-red-400">{raidState.currentEnemy.atk}</span></div>}
-                                 </div>
-                                 <div className="mt-6 grid grid-cols-2 gap-4 flex-none mb-2">
-                                    <PixelCard onClick={() => handleCombat('attack')} className="border-red-900/50 hover:bg-red-900/20 group"><div className="flex items-center justify-center gap-3 py-2"><Sword size={24} className="text-red-500 group-hover:rotate-45 transition-transform" /><div className="flex flex-col items-start"><span className="text-2xl">攻击</span>{raidState.isGlitchEnemy && <span className="text-sm text-red-400">(消耗饱食)</span>}</div></div></PixelCard>
-                                    <PixelCard onClick={() => handleCombat('flee')} className="group"><div className="flex items-center justify-center gap-3 py-2"><Zap size={24} className="text-yellow-500 group-hover:-translate-x-1 transition-transform" /><span className="text-2xl">逃跑</span></div></PixelCard>
-                                 </div>
-                            </div>
-                        )}
-
-                         {scene === 'result' && (
-                             <div className="flex-1 flex flex-col items-center justify-center text-center fade-in">
-                                <Briefcase size={96} className="text-green-600 mb-6" />
-                                <h2 className="text-4xl text-green-500 mb-4 tracking-widest">撤离成功</h2>
-                                <p className="text-xl text-slate-400 mb-4">你带着战利品回到了安全屋。</p>
-                                <div className="bg-black/20 p-4 rounded border border-slate-700 mb-8 max-h-48 overflow-y-auto w-full">
-                                    <div className="text-base text-slate-500 mb-2 uppercase border-b border-slate-600">获得物品</div>
-                                    {raidState.tempLoot.map((item, i) => (<div key={i} className={`flex justify-between text-lg ${RARITY_CONFIG[item.rarity].color}`}><span>{item.name}</span><span>${item.val}</span></div>))}
-                                    <div className="mt-2 pt-2 border-t border-slate-600 flex justify-between font-bold text-yellow-500 text-xl"><span>总估值</span><span>${raidState.tempLoot.reduce((a,b)=>a+b.val, 0)}</span></div>
-                                </div>
-                                <button onClick={() => setScene('storage')} className="px-8 py-4 bg-blue-900/30 border-2 border-blue-800 text-blue-400 text-2xl rounded hover:bg-blue-900/50 hover:text-blue-200 transition-colors">前往仓库整理</button>
-                             </div>
-                         )}
-
-                         {scene === 'gameover' && (
-                             <div className="flex-1 flex flex-col items-center justify-center text-center fade-in">
-                                <Skull size={96} className="text-slate-700 mb-6" />
-                                <h2 className="text-4xl text-red-600 mb-4 tracking-widest">行动失败</h2>
-                                <p className="text-xl text-slate-400 mb-8">你在废土中倒下了。<br/>所有携带的物资都丢失了。</p>
-                                <button onClick={resetGame} className="px-8 py-4 bg-red-900/30 border-2 border-red-800 text-red-400 text-2xl rounded hover:bg-red-900/50 hover:text-red-200 transition-colors">重新开始</button>
-                             </div>
-                         )}
-
-                    </div>
-
-                    <div className="h-36 bg-black p-3 overflow-y-auto font-mono text-base md:text-lg border-t-4 border-slate-700 z-10 no-scrollbar flex flex-col-reverse tracking-wide leading-snug flex-none">
-                        {logs.map((log, i) => (
-                            <div key={i} className={`mb-1 border-l-2 pl-2 ${
-                                log.includes('danger') || log.includes('受到') || log.includes('失败') || log.includes('缺少') ? 'text-red-500 border-red-900' : 
-                                log.includes('success') || log.includes('获得') || log.includes('出售') || log.includes('建造') ? 'text-green-500 border-green-900' : 
-                                log.includes('blue') ? 'text-blue-400 border-blue-900' :
-                                'text-slate-500 border-slate-800'
-                            }`}>
-                                <span className="opacity-50 mr-2">{log.match(/\[(.*?)\]/)?.[0] || '>'}</span>
-                                {log.replace(/\[.*?\] /, '').replace('danger', '').replace('success', '').replace('error', '').replace('blue', '')}
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                <div className="mt-6 flex justify-between items-center px-6 opacity-80">
+                <div className="mt-6 flex-none flex justify-between items-center px-6 opacity-80">
                      <div className="grid grid-cols-3 gap-1 w-24 h-24">
-                        <div className="bg-slate-700 rounded col-start-2 shadow-lg"></div>
-                        <div className="bg-slate-700 rounded col-start-1 row-start-2 shadow-lg"></div>
+                        <div className="bg-slate-700 rounded col-start-2"></div>
+                        <div className="bg-slate-700 rounded col-start-1 row-start-2"></div>
                         <div className="bg-slate-800 rounded col-start-2 row-start-2 flex items-center justify-center"><div className="w-3 h-3 rounded-full bg-black/30"></div></div>
-                        <div className="bg-slate-700 rounded col-start-3 row-start-2 shadow-lg"></div>
-                        <div className="bg-slate-700 rounded col-start-2 row-start-3 shadow-lg"></div>
+                        <div className="bg-slate-700 rounded col-start-3 row-start-2"></div>
+                        <div className="bg-slate-700 rounded col-start-2 row-start-3"></div>
                      </div>
                      <div className="flex gap-6 transform rotate-12">
                          <div className="w-12 h-12 rounded-full bg-red-800 shadow-[0_4px_0_rgb(80,0,0)] border-t border-red-600"></div>

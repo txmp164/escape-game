@@ -576,13 +576,20 @@
             else if (item.effect === 'sanity' && player.sanity < player.maxSanity) { newPlayer.sanity = Math.min(player.maxSanity, player.sanity + item.value); used = true; }
             if (used) { newPlayer.storage = player.storage.filter((_, i) => i !== idx); setPlayer(newPlayer); addLog(`使用了 ${item.name}。`, 'success'); }
           };
+          const getMaterialNameSet = () => {
+            const names = new Set();
+            Object.values(FACILITIES).forEach(f => { Object.keys(f.cost).forEach(n => names.add(n)); });
+            return names;
+          };
+          const isMaterial = (item) => item && item.type === 'loot' && getMaterialNameSet().has(item.name);
+          const isJunk = (item) => item && item.type === 'loot' && !isMaterial(item);
           const sellAllLoot = () => {
-            const lootItems = player.storage.filter(i => i.type === 'loot');
-            if (lootItems.length === 0) { addLog('没有可出售的战利品。'); return; }
+            const junkItems = player.storage.filter(isJunk);
+            if (junkItems.length === 0) { addLog('没有可出售的杂物。'); return; }
             const catRelic = player.relics.find(r => r.id === 'cat');
-            let totalVal = lootItems.reduce((acc, i) => acc + (i.val || 0), 0);
+            let totalVal = junkItems.reduce((acc, i) => acc + (i.val || 0), 0);
             if (catRelic) totalVal = Math.floor(totalVal * 1.2);
-            setPlayer(prev => ({ ...prev, money: prev.money + totalVal, storage: prev.storage.filter(i => i.type !== 'loot') }));
+            setPlayer(prev => ({ ...prev, money: prev.money + totalVal, storage: prev.storage.filter(i => !isJunk(i)) }));
             addLog(`一键出售杂物，获得 $${totalVal}`, 'success');
           };
           const useItem = (index) => {
@@ -673,7 +680,7 @@
               addLog(`敌人反击！受到 ${enemyDmg} 点伤害。`, 'danger'); if (player.hp - enemyDmg <= 0) setScene('gameover');
             } else if (action === 'flee') {
                let fleeChance = 0.5; if (player.mood > 80) fleeChance = 0.7; if (player.mood < 30) fleeChance = 0.3;
-               if (Math.random() < fleeChance) { addLog('逃跑成功！'); setRaidState(prev => ({ ...prev, currentEnemy: null })); setScene('raid'); }
+               if (Math.random() < fleeChance) { addLog('逃跑成功！'); setRaidState(prev => ({ ...prev, currentEnemy: null })); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 2) })); addLog('短暂喘息：心情 +2', 'success'); setScene('raid'); }
                else { addLog('逃跑失败！被敌人追上了。', 'danger'); const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg })); triggerShake(); if (player.hp - enemyDmg <= 0) setScene('gameover'); }
             }
           };
@@ -951,7 +958,10 @@
                                         {player.storage.length === 0 ? <div className="text-center text-slate-600 mt-10 text-xl">仓库空空如也...</div> : 
                                             groupItems(player.storage).map((g, idx) => (
                                                 <div key={idx} className={`p-3 border rounded flex justify-between items-center ${RARITY_CONFIG[g.item.rarity || 'white'].border} ${RARITY_CONFIG[g.item.rarity || 'white'].bg}`}>
-                                                    <div><div className={`${RARITY_CONFIG[g.item.rarity || 'white'].color} text-xl`}>{g.item.name}*{g.count}</div></div>
+                                                    <div>
+                                                        <div className={`${RARITY_CONFIG[g.item.rarity || 'white'].color} text-xl`}>{g.item.name}*{g.count}</div>
+                                                        <div className="text-sm text-slate-500 mt-0.5">{g.item.type === 'consumable' ? '食物/药品' : g.item.type === 'relic' ? '遗物' : isMaterial(g.item) ? '材料' : '杂物'}</div>
+                                                    </div>
                                                     <div className="flex gap-2">
                                                         {g.item.type === 'consumable' || g.item.type === 'relic' ? (
                                                             <button onClick={() => useOneByKey(g.key)} className="bg-green-700 hover:bg-green-600 text-white px-3 py-1 text-lg rounded">{g.item.type === 'relic' ? '装备' : '使用'}</button>

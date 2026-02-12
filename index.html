@@ -19,7 +19,7 @@
         body {
             background-color: #171717;
             color: #e2e8f0;
-            overflow-y: auto; /* 允许页面纵向滚动以适应 140vh 的高度 */
+            overflow-y: auto; 
             font-family: 'VT323', monospace; 
             touch-action: manipulation;
         }
@@ -37,27 +37,15 @@
         .fade-in { animation: fadeIn 0.3s ease-out; }
 
         @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            0%, 100% { transform: translate(1px, 1px) rotate(0deg); }
             20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
             40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
             60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(3px, 1px) rotate(-1deg); }
             80% { transform: translate(-1px, -1px) rotate(1deg); }
-            90% { transform: translate(1px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
         }
         .shake-anim { animation: shake 0.5s; }
         
         .bg-noise { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); }
-        
-        @keyframes slotSpin {
-            0% { transform: translateY(-10%); opacity: 0.5; filter: blur(2px); }
-            100% { transform: translateY(10%); opacity: 1; filter: blur(0px); }
-        }
-        .slot-item-spinning { animation: slotSpin 0.1s linear infinite; }
         
         @keyframes pulse-gold {
             0%, 100% { border-color: #ca8a04; box-shadow: 0 0 5px #ca8a04; }
@@ -73,21 +61,43 @@
 
         .min-h-safe { min-height: 100vh; min-height: 100dvh; }
 
+        @keyframes spin-blur { 0% { filter: blur(2px); transform: translateY(-10%); } 50% { filter: blur(4px); transform: translateY(10%); } 100% { filter: blur(2px); transform: translateY(-10%); } }
+        @keyframes pop-in { 0% { transform: scale(0.8); opacity: 0; } 60% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes win-pulse { 0%,100% { box-shadow: 0 0 6px #facc15; } 50% { box-shadow: 0 0 18px #facc15; } }
+        
+        /* 修复悬念特效：合并模糊与红光，使其仍然保持转动 */
+        @keyframes teaser-spin { 
+            0% { filter: blur(2px) drop-shadow(0 0 5px #ef4444); transform: translateY(-10%); } 
+            50% { filter: blur(4px) brightness(1.3) drop-shadow(0 0 20px #ef4444); transform: translateY(10%); } 
+            100% { filter: blur(2px) drop-shadow(0 0 5px #ef4444); transform: translateY(-10%); } 
+        }
+
+        .slot-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
+        .slot-col { display: grid; grid-template-rows: repeat(3, 1fr); gap: 0.35rem; }
+        .slot-cell { background: #cbd5e1; border: 4px solid #475569; color: #0f172a; font-size: 2rem; display: flex; align-items: center; justify-content: center; height: 64px; }
+        .text-blur-out { animation: spin-blur 0.25s linear infinite; filter: blur(3px); opacity: 0.8; transform: scale(0.95); }
+        
+        .teaser-col { animation: teaser-spin 0.25s linear infinite; position: relative; z-index: 10; border-radius: 8px;}
+        
+        .slot-cell.pop { animation: pop-in 0.3s ease-out; }
+        .slot-cell.win { animation: win-pulse 1s infinite; border-color: #facc15; z-index: 5; position: relative;}
+        
+        /* 修复指针冲突：只保留 middle-frame-overlay 的伪元素 */
+        .mid-row-frame { position: relative; }
+        .slot-col .slot-cell:nth-child(2) { background: #cbd5e1; filter: brightness(0.9); }
+        .middle-frame-overlay { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); height: 72px; border: 2px solid rgba(167,139,250,0.6); box-shadow: 0 0 12px rgba(167,139,250,0.6); pointer-events: none; border-radius: 6px; z-index: 20;}
+        .middle-frame-overlay::before { content: ""; position: absolute; left: -10px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-right: 14px solid rgba(250,204,21,0.9); filter: drop-shadow(0 0 6px rgba(250,204,21,0.9)); }
+        .middle-frame-overlay::after { content: ""; position: absolute; right: -10px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-left: 14px solid rgba(250,204,21,0.9); filter: drop-shadow(0 0 6px rgba(250,204,21,0.9)); }
+        
+        .neon-text { text-shadow: 0 0 6px rgba(250,204,21,0.8), 0 0 12px rgba(250,204,21,0.6); }
+
         .scanline {
-            width: 100%;
-            height: 100px;
-            z-index: 10;
+            width: 100%; height: 100px; z-index: 10;
             background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(0,0,0,0) 100%);
-            opacity: 0.1;
-            position: absolute;
-            bottom: 100%;
-            animation: scanline 10s linear infinite;
-            pointer-events: none;
+            opacity: 0.1; position: absolute; bottom: 100%;
+            animation: scanline 10s linear infinite; pointer-events: none;
         }
-        @keyframes scanline {
-            0% { bottom: 100%; }
-            100% { bottom: -100%; }
-        }
+        @keyframes scanline { 0% { bottom: 100%; } 100% { bottom: -100%; } }
     </style>
 </head>
 <body>
@@ -99,28 +109,21 @@
         const WIN_GOAL = 200000;
 
         // --- 图标组件 ---
-        const IconBase = ({ d, color, size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${color} ${className}`}>
-                {d}
-            </svg>
-        );
-
+        const IconBase = ({ d, color, size = 24, className = "" }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${color} ${className}`}>{d}</svg> );
         const Sword = (props) => <IconBase {...props} d={<path d="M14.5 17.5L3 6V3h3l11.5 11.5m-5-5l5 5m-5-5l5 5" />} />;
         const Shield = (props) => <IconBase {...props} d={<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />} />;
         const Heart = (props) => <IconBase {...props} d={<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />} />;
-        const Zap = (props) => <IconBase {...props} d={<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />} />;
+        const Activity = (props) => <IconBase {...props} d={<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />} />;
         const Skull = (props) => <IconBase {...props} d={<><path d="M12 2c-4.42 0-8 3.58-8 8a8.01 8.01 0 0 0 2.5 5.8l1.5 2.2H16l1.5-2.2A8.01 8.01 0 0 0 20 10c0-4.42-3.58-8-8-8z"/><path d="M9 14h6"/><path d="M15 17h.01"/><path d="M9 17h.01" /></>} />;
         const ShoppingBag = (props) => <IconBase {...props} d={<><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0" /></>} />;
         const Briefcase = (props) => <IconBase {...props} d={<><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>} />;
         const Footprints = (props) => <IconBase {...props} d={<><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 11 3.8 11 8c0 1.25-.76 2.5-2 3.5-1.24 1-2 2.25-2 3.5V17"/><path d="M14 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C8.63 6 7 7.8 7 12c0 1.25.76 2.5 2 3.5 1.24 1 2 2.25 2 3.5V21" /></>} />;
         const LogOut = (props) => <IconBase {...props} d={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12" /></>} />;
-        const AlertTriangle = (props) => <IconBase {...props} d={<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17" /></>} />;
         const Radio = (props) => <IconBase {...props} d={<><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" /></>} />;
         const Coins = (props) => <IconBase {...props} d={<><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="M17.121 17.121A3 3 0 1 0 21.364 21.364 3 3 0 1 0 17.121 17.121z" /></>} />;
         const Trash2 = (props) => <IconBase {...props} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17" /></>} />;
         const Utensils = (props) => <IconBase {...props} d={<><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" /></>} />;
         const Smile = (props) => <IconBase {...props} d={<><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9" /></>} />;
-        const Activity = (props) => <IconBase {...props} d={<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />} />;
         const Hammer = (props) => <IconBase {...props} d={<><path d="M15 12l-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9"/><path d="M17.64 15L22 10.64"/><path d="M20.91 8.26L15.73 3.08a1 1 0 0 0-1.41 0l-1.42 1.42a1 1 0 0 0 0 1.41l5.66 5.66a1 1 0 0 0 1.41 0l1.42-1.42a1 1 0 0 0 0-1.41z" /></>} />;
         const HelpCircle = (props) => <IconBase {...props} d={<><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17" /></>} />;
         const Gem = (props) => <IconBase {...props} d={<path d="M6 3h12l4 6-10 13L2 9z" />} />;
@@ -132,7 +135,7 @@
           food:     { id: 'food', name: '压缩饼干', type: 'consumable', cost: 30, effect: 'satiety', value: 40, desc: '恢复40饱食', rarity: 'white' },
           alcohol:  { id: 'alcohol', name: '陈年威士忌', type: 'consumable', cost: 80, effect: 'mood', value: 50, desc: '恢复50心情,减少10San', rarity: 'green' },
           pills:    { id: 'pills', name: '镇静剂', type: 'consumable', cost: 120, effect: 'sanity', value: 40, desc: '恢复40理智(San)', rarity: 'blue' },
-          ammo_box: { id: 'ammo_box', name: '自制弹药箱', type: 'consumable', cost: 0, effect: 'buff_atk', value: 10, desc: '伤害+10 (工作台制造)', rarity: 'green' },
+          ammo_box: { id: 'ammo_box', name: '自制弹药箱', type: 'consumable', cost: 0, effect: 'buff_atk', value: 10, desc: '伤害+10 (制造)', rarity: 'green' },
         };
 
         const GEAR = {
@@ -158,8 +161,7 @@
 
         const STORY_EVENTS = [
           {
-            id: 'injured_scavenger',
-            text: '你发现一个受伤的拾荒者靠在墙边，腹部的伤口正在渗血。',
+            id: 'injured_scavenger', text: '你发现一个受伤的拾荒者靠在墙边，腹部的伤口正在渗血。',
             choices: [
               { id: 'help', text: '救助 (消耗急救包)', req: { item: 'medkit' }, resultText: '你包扎了他的伤口。他感激地塞给你一些东西。', mood: 20, sanity: 5, lootChance: 1.0 },
               { id: 'rob', text: '打劫', resultText: '你趁火打劫。他试图反抗...', combat: true, enemyId: 'weak_scavenger', mood: -10, sanity: -10 },
@@ -167,8 +169,7 @@
             ]
           },
           {
-            id: 'abandoned_shrine',
-            text: '废墟深处有一座堆满电子元件的奇怪祭坛，散发着微光。',
+            id: 'abandoned_shrine', text: '废墟深处有一座堆满电子元件的奇怪祭坛，散发着微光。',
             choices: [
               { id: 'pray', text: '祈祷 (消耗5饱食)', req: { stat: 'satiety', val: 5 }, resultText: '你感到一阵平静，但也更加饥饿。', mood: 10, sanity: 20 },
               { id: 'desecrate', text: '搜刮祭坛', resultText: '你拿走了上面的零件，但感觉有什么东西跟上了你...', combat: true, enemyId: 'glitch', mood: 0, sanity: -15, lootChance: 1.0 },
@@ -187,31 +188,20 @@
         };
 
         const LOOT_DB = [
-          { name: '螺丝组件', val: 15, rarity: 'white', type: 'loot' },
-          { name: '废旧钢材', val: 25, rarity: 'white', type: 'loot' },
-          { name: '神秘肉罐头', val: 30, rarity: 'white', type: 'loot' },
-          { name: '粗糙布料', val: 50, rarity: 'green', type: 'loot' },
-          { name: '线材组件', val: 65, rarity: 'green', type: 'loot' },
-          { name: '未知酱料', val: 80, rarity: 'green', type: 'loot' },
-          { name: '好用的钳子', val: 150, rarity: 'blue', type: 'loot' },
-          { name: '润滑油', val: 180, rarity: 'blue', type: 'loot' },
-          { name: '燃气瓶', val: 220, rarity: 'blue', type: 'loot' },
-          { name: '优质钢材', val: 400, rarity: 'purple', type: 'loot' },
-          { name: '蓄电池', val: 550, rarity: 'purple', type: 'loot' },
-          { name: '火药', val: 600, rarity: 'purple', type: 'loot' },
-          { name: '求生急救包', val: 1000, rarity: 'gold', type: 'loot' },
-          { name: '完整抗生素', val: 1200, rarity: 'gold', type: 'loot' },
+          { name: '螺丝组件', val: 15, rarity: 'white', type: 'loot' }, { name: '废旧钢材', val: 25, rarity: 'white', type: 'loot' },
+          { name: '神秘肉罐头', val: 30, rarity: 'white', type: 'loot' }, { name: '粗糙布料', val: 50, rarity: 'green', type: 'loot' },
+          { name: '线材组件', val: 65, rarity: 'green', type: 'loot' }, { name: '未知酱料', val: 80, rarity: 'green', type: 'loot' },
+          { name: '好用的钳子', val: 150, rarity: 'blue', type: 'loot' }, { name: '润滑油', val: 180, rarity: 'blue', type: 'loot' },
+          { name: '燃气瓶', val: 220, rarity: 'blue', type: 'loot' }, { name: '优质钢材', val: 400, rarity: 'purple', type: 'loot' },
+          { name: '蓄电池', val: 550, rarity: 'purple', type: 'loot' }, { name: '火药', val: 600, rarity: 'purple', type: 'loot' },
+          { name: '求生急救包', val: 1000, rarity: 'gold', type: 'loot' }, { name: '完整抗生素', val: 1200, rarity: 'gold', type: 'loot' },
           { name: '求生无线电发射器', val: 5000, rarity: 'special', type: 'loot' },
-          { ...RELICS.vampire, val: 800 },
-          { ...RELICS.cat, val: 800 },
-          { ...RELICS.adrenaline, val: 800 },
+          { ...RELICS.vampire, val: 800 }, { ...RELICS.cat, val: 800 }, { ...RELICS.adrenaline, val: 800 },
         ];
 
         const ENEMIES = [
-          { id: 'rat', name: '变异老鼠', hp: 10, atk: 3, exp: 10 },
-          { id: 'scavenger', name: '流浪拾荒者', hp: 25, atk: 6, exp: 30 },
-          { id: 'thug', name: '武装暴徒', hp: 45, atk: 10, exp: 60 },
-          { id: 'merc', name: '精英佣兵', hp: 80, atk: 15, exp: 150 },
+          { id: 'rat', name: '变异老鼠', hp: 10, atk: 3, exp: 10 }, { id: 'scavenger', name: '流浪拾荒者', hp: 25, atk: 6, exp: 30 },
+          { id: 'thug', name: '武装暴徒', hp: 45, atk: 10, exp: 60 }, { id: 'merc', name: '精英佣兵', hp: 80, atk: 15, exp: 150 },
         ];
 
         // --- 样式组件 ---
@@ -235,85 +225,145 @@
           <div className="flex items-center gap-1 text-sm leading-none mb-1 pixel-font w-full">
             {icon && <span className="w-4 text-slate-400">{icon}</span>}
             <div className="flex-1 h-2 bg-slate-900 border border-slate-600 relative">
-              <div 
-                className={`h-full ${color} transition-all duration-300`} 
-                style={{ width: `${Math.max(0, Math.min(100, (current / max) * 100))}%` }}
-              />
+              <div className={`h-full ${color} transition-all duration-300`} style={{ width: `${Math.max(0, Math.min(100, (current / max) * 100))}%` }} />
             </div>
           </div>
         );
 
-        const SlotMachine = ({ bet, onSpin, result, isSpinning, jackpot, spinCount, freeSpins, moodMsg }) => {
-            const symbols = ['💀', '🔧', '🍗', '☢️', '💎', '7️⃣'];
-            const [displaySlots, setDisplaySlots] = useState(['❓', '❓', '❓']);
+        // =========================================
+        // 核心子组件：老虎机面板
+        // =========================================
+        const SlotMachine5x3 = ({ bet, onSpin, isSpinning, result, moodMsg, jackpots, energy, isFrenzy, freeSpins, frenzySpins, teaserCol, winningPositions, bannerText, bannerBoost }) => {
+            const moodColor = moodMsg && moodMsg.includes('+') ? 'text-green-400' : moodMsg && moodMsg.includes('-') ? 'text-red-400' : 'text-purple-400';
+            const [animCols, setAnimCols] = useState([false,false,false,false,false]);
+            const [displayGrid, setDisplayGrid] = useState(Array.from({length:3},()=>Array.from({length:5},()=> '❓')));
+            const spinTimers = useRef([null,null,null,null,null]);
+            const [popCells, setPopCells] = useState(new Set());
+            // 用于控制悬念红光的时间轴状态
+            const [activeTeaser, setActiveTeaser] = useState(null);
 
+            const randPool = ['💀','🔧','🍗','☢️','💎','7️⃣','🃏','⭐'];
+            const randPick = () => randPool[Math.floor(Math.random()*randPool.length)];
+
+            const startSpinAnim = (c) => {
+                setAnimCols(prev => { const p=[...prev]; p[c]=true; return p; });
+                spinTimers.current[c] = setInterval(() => {
+                    setDisplayGrid(prev => {
+                        const next = prev.map(row => [...row]);
+                        for (let r=0;r<3;r++) next[r][c] = randPick();
+                        return next;
+                    });
+                }, 50);
+            };
+
+            // 修复1：去掉 Promise 包装，改成普通的同步函数，不阻塞下一列的循环
+            const stopSpinAnim = (c, finalCol) => {
+                if (spinTimers.current[c]) { clearInterval(spinTimers.current[c]); spinTimers.current[c]=null; }
+                setAnimCols(prev => { const p=[...prev]; p[c]=false; return p; });
+                setDisplayGrid(prev => {
+                    const next = prev.map(row => [...row]);
+                    for (let r=0;r<3;r++) next[r][c] = finalCol[r];
+                    return next;
+                });
+                
+                setPopCells(prev => {
+                    const next = new Set(prev);
+                    for (let r=0;r<3;r++) next.add(`${r}-${c}`);
+                    return next;
+                });
+
+                setTimeout(() => {
+                    setPopCells(prev => {
+                        const next = new Set(prev);
+                        for (let r=0;r<3;r++) next.delete(`${r}-${c}`);
+                        return next;
+                    });
+                }, 300);
+            };
+
+            // 控制整体旋转开始/强制中断
             useEffect(() => {
                 if (isSpinning) {
-                    const interval = setInterval(() => {
-                        setDisplaySlots([
-                            symbols[Math.floor(Math.random() * symbols.length)],
-                            symbols[Math.floor(Math.random() * symbols.length)],
-                            symbols[Math.floor(Math.random() * symbols.length)]
-                        ]);
-                    }, 50);
-                    return () => clearInterval(interval);
-                } else if (result) {
-                    setDisplaySlots(result);
+                    for (let c=0;c<5;c++) startSpinAnim(c);
+                } else {
+                    for (let c=0;c<5;c++) { if (spinTimers.current[c]) { clearInterval(spinTimers.current[c]); spinTimers.current[c]=null; } }
+                    setAnimCols([false,false,false,false,false]);
+                    setActiveTeaser(null);
                 }
-            }, [isSpinning, result]);
+                return () => { for (let c=0;c<5;c++) { if (spinTimers.current[c]) { clearInterval(spinTimers.current[c]); spinTimers.current[c]=null; } } };
+            }, [isSpinning]);
 
-            const progress = Math.min(100, (spinCount % 20) / 20 * 100);
-            const moodColor = moodMsg && moodMsg.includes('+') ? 'text-green-400' : moodMsg && moodMsg.includes('-') ? 'text-red-400' : 'text-purple-400';
+            // 控制逐列停止的剧本异步循环
+            useEffect(() => {
+                if (isSpinning && result) {
+                    (async () => {
+                        let scatterCountSoFar = 0;
+                        for (let c=0;c<5;c++) {
+                            let baseDelay = c===0 ? 500 : 300;
+                            if (c===4 && teaserCol===4 && scatterCountSoFar===2) {
+                                baseDelay = 2000;
+                                setActiveTeaser(4); 
+                            }
+                            // 准确等待预定时间
+                            await new Promise(r => setTimeout(r, baseDelay));
+                            
+                            if (spinTimers.current[c]) {
+                                const finalCol = [result[0][c], result[1][c], result[2][c]];
+                                // 修复2：这里去掉 await！让回弹动画自己播去，不阻塞下一个轴的时间计算
+                                stopSpinAnim(c, finalCol);
+                                if (c === 4) setActiveTeaser(null);
+                                scatterCountSoFar += finalCol.filter(s=>s==='⭐').length;
+                            }
+                        }
+                    })();
+                }
+            }, [isSpinning, result, teaserCol]);
 
             return (
-                <div className={`bg-slate-900 p-3 border-4 border-yellow-600 rounded-lg text-center mb-2 relative overflow-hidden ${freeSpins > 0 ? 'fever-mode' : ''}`}>
+                <div className={`bg-slate-900 p-3 border-4 border-yellow-600 rounded-lg text-center mb-2 relative overflow-hidden ${isFrenzy ? 'fever-mode' : ''}`}>
                     <div className="absolute inset-0 bg-yellow-900/10 pointer-events-none"></div>
-                    <div className="flex justify-between items-center mb-2 px-1">
-                        <div className="text-left">
-                            <div className="text-[10px] text-yellow-600 font-bold uppercase tracking-widest">JACKPOT</div>
-                            <div className="text-xl text-yellow-400 font-bold leading-none animate-pulse">${jackpot.toLocaleString()}</div>
+                    
+                    {/* 修复 BUG4：接收并渲染重要播报横幅 */}
+                    {bannerText && (
+                        <div className={`absolute inset-0 z-[100] flex items-center justify-center pointer-events-none transition-transform duration-300 ${bannerBoost ? 'scale-110' : 'scale-100'}`}>
+                            <span className="text-3xl font-bold text-yellow-400 neon-text bg-black/80 px-4 py-2 rounded-lg border-2 border-yellow-500 shadow-[0_0_20px_#ca8a04]">
+                                {bannerText}
+                            </span>
                         </div>
-                        <div className="text-right w-24">
-                            <div className="text-[10px] text-purple-400 font-bold uppercase tracking-widest flex justify-end gap-1">
-                                {freeSpins > 0 ? <span className="animate-bounce">FEVER TIME!</span> : 'FEVER METER'}
-                            </div>
-                            {freeSpins > 0 ? (
-                                <div className="text-purple-300 text-sm font-bold">剩余 {freeSpins} 次</div>
-                            ) : (
-                                <div className="h-1 bg-slate-800 border border-slate-600 mt-1 relative">
-                                    <div className="h-full bg-purple-600 transition-all" style={{width: `${progress}%`}}></div>
-                                </div>
-                            )}
-                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center mb-2 px-1 relative z-10">
+                        <div className="text-left"><div className="text-[10px] text-amber-400 font-bold uppercase">MINI</div><div className="text-lg text-amber-300 font-bold leading-none">${jackpots.mini.toLocaleString()}</div></div>
+                        <div className="text-center"><div className="text-[10px] text-amber-500 font-bold uppercase">MAJOR</div><div className="text-xl text-amber-400 font-bold leading-none">${jackpots.major.toLocaleString()}</div></div>
+                        <div className="text-right"><div className="text-[10px] text-amber-600 font-bold uppercase">GRAND</div><div className="text-2xl text-amber-500 font-bold leading-none">${jackpots.grand.toLocaleString()}</div></div>
                     </div>
-                    <div className="flex justify-center gap-2 mb-4 bg-black/50 p-2 rounded">
-                        {displaySlots.map((s, i) => (
-                            <div key={i} className={`w-16 h-16 bg-slate-200 border-4 border-slate-600 flex items-center justify-center text-4xl shadow-inner text-black ${isSpinning ? 'slot-item-spinning' : ''}`}>
-                                {s}
+                    <div className="mb-2 flex justify-between items-center px-1 relative z-10"><div className="text-[10px] text-purple-300">ENERGY {energy}/10</div><div className="text-[10px] text-purple-300">FS {freeSpins} / RF {frenzySpins}</div></div>
+                    
+                    <div className="relative bg-black/40 p-2 rounded z-10">
+                        {/* 修复 BUG5：仅保留这一个覆盖层，移除 mid-row-frame 的三角重影 */}
+                        <div className="middle-frame-overlay"></div>
+                        <div className="slot-grid mid-row-frame">
+                        {[0,1,2,3,4].map(c => (
+                            <div key={c} id={`col-${c}`} className={`slot-col ${activeTeaser === c ? 'teaser-col' : (animCols[c] ? 'text-blur-out' : '')}`}>
+                                {[0,1,2].map(r => {
+                                    const val = displayGrid?.[r]?.[c] || '❓';
+                                    const win = winningPositions?.some(w => w[0]===r && w[1]===c);
+                                    const pop = popCells.has(`${r}-${c}`);
+                                    return (<div key={r} id={`cell-${c}-${r}`} className={`slot-cell ${pop ? 'pop' : ''} ${win ? 'win' : ''}`}>{val}</div>);
+                                })}
                             </div>
                         ))}
+                        </div>
                     </div>
-                    <button 
-                        onClick={onSpin} 
-                        disabled={isSpinning}
-                        className={`w-full py-3 text-xl font-bold rounded border-b-4 active:border-b-0 active:translate-y-1 transition-all ${
-                            isSpinning ? 'bg-slate-600 border-slate-800 text-slate-400' : 
-                            freeSpins > 0 ? 'bg-purple-600 border-purple-800 hover:bg-purple-500 text-white animate-pulse' :
-                            'bg-red-600 border-red-800 hover:bg-red-500 text-white'
-                        }`}
-                    >
-                        {isSpinning ? 'SPINNING...' : freeSpins > 0 ? 'FREE SPIN!' : `PULL LEVER ($${bet})`}
-                    </button>
-                    <div className="mt-2 flex justify-between text-[10px] text-slate-500 px-1">
-                        <span>累计: {spinCount} 次</span>
-                        {spinCount >= 648 ? <span className="text-red-500 animate-ping">JACKPOT READY</span> : <span>目标: 648</span>}
-                    </div>
-                    {moodMsg && (<div className={`mt-1 text-sm ${moodColor}`}>{moodMsg}</div>)}
+                    <button onClick={onSpin} disabled={isSpinning} className={`w-full mt-3 py-3 text-xl font-bold rounded border-b-4 active:border-b-0 active:translate-y-1 transition-all relative z-10 ${isSpinning ? 'bg-slate-600 border-slate-800 text-slate-400' : isFrenzy || frenzySpins>0 ? 'bg-purple-600 border-purple-800 hover:bg-purple-500 text-white animate-pulse' : 'bg-red-600 border-red-800 hover:bg-red-500 text-white'}`}>{isSpinning ? 'SPINNING...' : (freeSpins>0 ? 'FREE SPIN!' : (frenzySpins>0 ? 'RADIATION FRENZY!' : `PULL LEVER ($${bet})`))}</button>
+                    {moodMsg && (<div className={`mt-2 text-sm relative z-10 ${moodColor}`}>{moodMsg}</div>)}
                 </div>
             );
         };
 
-        // --- 主组件 ---
+        // =========================================
+        // 主组件
+        // =========================================
         function ExtractionGame() {
           const [scene, setScene] = useState('intro');
           const [logs, setLogs] = useState([]);
@@ -322,12 +372,22 @@
           
           const [shopTab, setShopTab] = useState('buy');
           const [betAmount, setBetAmount] = useState(50);
+          
           const [isSpinning, setIsSpinning] = useState(false);
-          const [slotResult, setSlotResult] = useState(null);
-          const [jackpot, setJackpot] = useState(12000);
           const [spinCount, setSpinCount] = useState(0);
           const [freeSpins, setFreeSpins] = useState(0);
           const [slotMoodMsg, setSlotMoodMsg] = useState('');
+          
+          const [jackpots, setJackpots] = useState({ mini: 2000, major: 8000, grand: 20000 });
+          const [energy, setEnergy] = useState(0);
+          const [isFrenzy, setIsFrenzy] = useState(false);
+          const [frenzySpins, setFrenzySpins] = useState(0);
+          const [slotGrid, setSlotGrid] = useState(null);
+          const [winningPositions, setWinningPositions] = useState([]);
+          const [teaserCol, setTeaserCol] = useState(null);
+          const JACKPOT_BASES = { mini: 2000, major: 8000, grand: 20000 };
+          const [slotBanner, setSlotBanner] = useState('');
+          const [bannerBoost, setBannerBoost] = useState(false);
 
           // Intro State
           const [introStep, setIntroStep] = useState(0);
@@ -346,27 +406,15 @@
           ];
 
           const [player, setPlayer] = useState({
-            hp: 100, maxHp: 100,
-            satiety: 100, maxSatiety: 100,
-            mood: 100, maxMood: 100,
-            sanity: 100, maxSanity: 100,
-            money: 500, 
-            weapon: GEAR.knife,
-            armor: GEAR.clothes,
-            relics: [],
-            facilities: {},
-            inventory: [],
-            storage: [],
+            hp: 100, maxHp: 100, satiety: 100, maxSatiety: 100,
+            mood: 100, maxMood: 100, sanity: 100, maxSanity: 100,
+            money: 500, weapon: GEAR.knife, armor: GEAR.clothes,
+            relics: [], facilities: {}, inventory: [], storage: [],
           });
 
           const [raidState, setRaidState] = useState({
-            distance: 0,
-            dangerLevel: 1,
-            currentEnemy: null,
-            isGlitchEnemy: false,
-            tempLoot: [],      
-            currentLootItem: null,
-            currentInteractiveEvent: null,
+            distance: 0, dangerLevel: 1, currentEnemy: null, isGlitchEnemy: false,
+            tempLoot: [], currentLootItem: null, currentInteractiveEvent: null,
           });
 
           const addLog = (msg, type = 'neutral') => {
@@ -374,41 +422,20 @@
             setLogs(prev => [`[${time}] ${msg}`, ...prev].slice(0, 8));
           };
 
-          const triggerShake = () => {
-              setIsShake(true);
-              setTimeout(() => setIsShake(false), 500);
-          };
-
+          const triggerShake = () => { setIsShake(true); setTimeout(() => setIsShake(false), 500); };
           const countItemInStorage = (itemName) => player.storage.filter(i => i.name === itemName).length;
-          const removeItemsFromStorage = (itemName, count) => {
-            let removed = 0;
-            return player.storage.filter(item => {
-              if (item.name === itemName && removed < count) { removed++; return false; }
-              return true;
-            });
-          };
+          const removeItemsFromStorage = (itemName, count) => { let removed = 0; return player.storage.filter(item => { if (item.name === itemName && removed < count) { removed++; return false; } return true; }); };
 
           const upgradeFacility = (facId) => {
-            const facility = FACILITIES[facId];
-            if (player.facilities[facId]) return;
-            let canBuild = true;
-            for (const [name, count] of Object.entries(facility.cost)) {
-              if (countItemInStorage(name) < count) canBuild = false;
-            }
+            const facility = FACILITIES[facId]; if (player.facilities[facId]) return;
+            let canBuild = true; for (const [name, count] of Object.entries(facility.cost)) { if (countItemInStorage(name) < count) canBuild = false; }
             if (canBuild) {
               let newStorage = [...player.storage];
-              for (const [name, count] of Object.entries(facility.cost)) {
-                let removed = 0;
-                newStorage = newStorage.filter(item => {
-                  if (item.name === name && removed < count) { removed++; return false; }
-                  return true;
-                });
-              }
+              for (const [name, count] of Object.entries(facility.cost)) { let removed = 0; newStorage = newStorage.filter(item => { if (item.name === name && removed < count) { removed++; return false; } return true; }); }
               const newFacilities = { ...player.facilities, [facId]: true };
               let updates = { storage: newStorage, facilities: newFacilities };
               if (facId === 'kitchen') { updates.maxSatiety = 150; updates.satiety = 150; }
-              setPlayer(prev => ({ ...prev, ...updates }));
-              addLog(`设施建造成功：${facility.name}`, 'success');
+              setPlayer(prev => ({ ...prev, ...updates })); addLog(`设施建造成功：${facility.name}`, 'success');
             } else { addLog('材料不足，无法建造！', 'error'); }
           };
 
@@ -423,294 +450,145 @@
 
           const handleEventChoice = (choice) => {
             if (choice.req) {
-              if (choice.req.item) {
-                const hasItem = player.storage.some(i => i.id === choice.req.item);
-                if (!hasItem) { addLog('缺少所需物品！', 'error'); return; }
-                const idx = player.storage.findIndex(i => i.id === choice.req.item);
-                const newStorage = player.storage.filter((_, i) => i !== idx);
-                setPlayer(prev => ({ ...prev, storage: newStorage }));
-              }
-              if (choice.req.stat) {
-                if (player[choice.req.stat] < choice.req.val) { addLog('状态不足！', 'error'); return; }
-                setPlayer(prev => ({ ...prev, [choice.req.stat]: prev[choice.req.stat] - choice.req.val }));
-              }
+              if (choice.req.item) { const hasItem = player.storage.some(i => i.id === choice.req.item); if (!hasItem) { addLog('缺少所需物品！', 'error'); return; } const idx = player.storage.findIndex(i => i.id === choice.req.item); const newStorage = player.storage.filter((_, i) => i !== idx); setPlayer(prev => ({ ...prev, storage: newStorage })); }
+              if (choice.req.stat) { if (player[choice.req.stat] < choice.req.val) { addLog('状态不足！', 'error'); return; } setPlayer(prev => ({ ...prev, [choice.req.stat]: prev[choice.req.stat] - choice.req.val })); }
             }
             addLog(choice.resultText);
             if (choice.mood) setPlayer(prev => ({ ...prev, mood: Math.min(prev.maxMood, prev.mood + choice.mood) }));
             if (choice.sanity) setPlayer(prev => ({ ...prev, sanity: Math.min(prev.maxSanity, prev.sanity + choice.sanity) }));
-            if (choice.combat) {
-              let enemyTemplate = ENEMIES[0];
-              if (choice.enemyId === 'weak_scavenger') enemyTemplate = { name: '受伤的拾荒者', hp: 15, atk: 4, exp: 20 };
-              if (choice.enemyId === 'glitch') enemyTemplate = { name: '?%#ERROR', hp: 60, atk: 12, exp: 0 };
-              setRaidState(prev => ({ ...prev, currentEnemy: { ...enemyTemplate, maxHp: enemyTemplate.hp }, isGlitchEnemy: choice.enemyId === 'glitch' }));
-              setScene('combat'); return;
-            }
-            if (choice.lootChance) {
-              if (Math.random() < choice.lootChance) {
-                const loot = generateLootItem(raidState.distance + 500);
-                setRaidState(prev => ({ ...prev, tempLoot: [...prev.tempLoot, loot], currentLootItem: loot }));
-                setScene('event'); return;
-              }
-            }
+            if (choice.combat) { let enemyTemplate = ENEMIES[0]; if (choice.enemyId === 'weak_scavenger') enemyTemplate = { name: '受伤的拾荒者', hp: 15, atk: 4, exp: 20 }; if (choice.enemyId === 'glitch') enemyTemplate = { name: '?%#ERROR', hp: 60, atk: 12, exp: 0 }; setRaidState(prev => ({ ...prev, currentEnemy: { ...enemyTemplate, maxHp: enemyTemplate.hp }, isGlitchEnemy: choice.enemyId === 'glitch' })); setScene('combat'); return; }
+            if (choice.lootChance) { if (Math.random() < choice.lootChance) { const loot = generateLootItem(raidState.distance + 500); setRaidState(prev => ({ ...prev, tempLoot: [...prev.tempLoot, loot], currentLootItem: loot })); setScene('event'); return; } }
             setScene('raid');
           };
 
           const handleShopClick = (item, type) => {
-            if (confirmId === item.id) {
-                if (type === 'gear') buyGear(item); else buyItem(item);
-                setConfirmId(null);
-            } else { setConfirmId(item.id); setTimeout(() => { setConfirmId(prev => prev === item.id ? null : prev); }, 3000); }
+            if (confirmId === item.id) { if (type === 'gear') buyGear(item); else buyItem(item); setConfirmId(null); } 
+            else { setConfirmId(item.id); setTimeout(() => { setConfirmId(prev => prev === item.id ? null : prev); }, 3000); }
           };
 
-          const handleSpin = () => {
-              const isFreeSpin = freeSpins > 0;
-              if (!isFreeSpin && player.money < betAmount) { addLog("资金不足！", "error"); return; }
+          // ==========================================
+          // 修复后且准确同步动画时间轴的老赌机派彩逻辑
+          // ==========================================
+          const handleSpin5x3 = () => {
+              const isFreeSpin = freeSpins > 0; const isFrenzySpin = frenzySpins > 0;
+              if (!isFreeSpin && !isFrenzySpin && player.money < betAmount) { addLog("资金不足！", "error"); return; }
               
-              if (!isFreeSpin) {
+              if (!isFreeSpin && !isFrenzySpin) {
                   setPlayer(p => ({ ...p, money: p.money - betAmount }));
-                  setJackpot(prev => prev + Math.floor(betAmount * 0.1));
+                  setJackpots(prev => ({ mini: prev.mini + Math.floor(betAmount * 0.05), major: prev.major + Math.floor(betAmount * 0.03), grand: prev.grand + Math.floor(betAmount * 0.02) }));
                   setSpinCount(prev => prev + 1);
-              } else {
-                  setFreeSpins(prev => prev - 1);
+              } else if (isFreeSpin) { setFreeSpins(prev => Math.max(0, prev - 1)); } else if (isFrenzySpin) { setFrenzySpins(prev => Math.max(0, prev - 1)); }
+              
+              setIsSpinning(true); setSlotGrid(null); setSlotMoodMsg(''); setWinningPositions([]); setTeaserCol(null); setSlotBanner(''); setBannerBoost(false);
+              
+              const poolBase = [{s:'💀',w:20},{s:'🔧',w:25},{s:'🍗',w:20},{s:'☢️',w:15},{s:'💎',w:10},{s:'7️⃣',w:4},{s:'🃏',w:4},{s:'⭐',w:2}];
+              const pool = (isFrenzy || isFrenzySpin) ? poolBase.filter(x => x.s!=='💀' && x.s!=='🔧') : poolBase;
+              const pick = () => { const total = pool.reduce((a,b)=>a+b.w,0); let r = Math.random()*total; for (let i=0;i<pool.length;i++){ r -= pool[i].w; if (r<=0) return pool[i].s; } return pool[pool.length-1].s; };
+              
+              const grid = Array.from({length:3},()=>Array.from({length:5},()=>pick()));
+              const lines = [ [0,0,0,0,0],[1,1,1,1,1],[2,2,2,2,2],[0,1,2,1,0],[2,1,0,1,2],[0,0,1,2,2],[2,2,1,0,0],[1,0,1,2,1],[1,2,1,0,1],[0,1,1,1,2] ];
+              const mul = { '7️⃣': {3:80,4:250,5:1000}, '💎': {3:40,4:100,5:500}, '☢️': {3:20,4:50,5:200}, '🍗': {3:10,4:30,5:100}, '🔧': {3:5,4:15,5:50} };
+              
+              let totalMult = 0; let energyGain = 0; let miniWin=false, majorWin=false, grandWin=false; const wins=[];
+              
+              for (let li=0; li<lines.length; li++) {
+                  const seq = [grid[lines[li][0]][0], grid[lines[li][1]][1], grid[lines[li][2]][2], grid[lines[li][3]][3], grid[lines[li][4]][4]];
+                  let base = null; for (let c=0;c<5;c++){ const sym=seq[c]; if (sym!=='🃏' && sym!=='⭐' && sym!=='💀') { base=sym; break; } }
+                  if (!base) continue; if (!mul[base]) continue;
+                  
+                  let len=0; let tempWins=[];
+                  for (let c=0;c<5;c++){ const sym=seq[c]; if (sym==='⭐' || sym==='💀') break; if (sym===base || sym==='🃏') { len++; tempWins.push([lines[li][c], c]); } else break; }
+                  if (len>=3) { 
+                      wins.push(...tempWins);
+                      totalMult += mul[base][len] || 0; 
+                      energyGain += (len===3?1:len===4?2:3); 
+                      if (len===5) { if (base==='☢️') miniWin=true; if (base==='💎') majorWin=true; if (base==='7️⃣') grandWin=true; } 
+                  }
+              }
+              
+              const scatters = grid.flat().filter(s=>s==='⭐').length;
+              const teaser = scatters >=2 && [0,1,2,3].some(c => [0,1,2].some(r => grid[r][c]==='⭐')) ? 4 : null; 
+              
+              setTeaserCol(teaser);
+              setSlotGrid(grid);
+              
+              // 修复3：校准主程序的等待时间。
+              // 5轴正常转完需要 1700ms，加上最后一个轴 300ms的 Q弹动画，刚好 2000ms。
+              // 有悬念时转完需要 3400ms，加上 300ms弹簧动画，刚好 3700ms。
+              const baseDelay = teaser === 4 ? 3700 : 2000;
+              
+              // 第 1400ms 是第4列停稳，悬念正式开始拉扯的瞬间
+              if (teaser === 4) {
+                  setTimeout(() => {
+                      setSlotBanner('即将出免费摇奖...？！！');
+                      setBannerBoost(true);
+                      setTimeout(() => setBannerBoost(false), 600);
+                  }, 1400);
               }
 
-              setIsSpinning(true); setSlotResult(null); setSlotMoodMsg('');
-              
-              setTimeout(() => {
-                  const symbols = ['💀', '🔧', '🔧', '🍗', '🍗', '☢️', '💎', '7️⃣']; 
-                  const s1 = symbols[Math.floor(Math.random() * symbols.length)];
-                  const s2 = symbols[Math.floor(Math.random() * symbols.length)];
-                  const s3 = symbols[Math.floor(Math.random() * symbols.length)];
-                  const result = [s1, s2, s3];
-                  setIsSpinning(false); setSlotResult(result);
-
-                  let newFreeSpins = freeSpins;
-                  if (!isFreeSpin && (spinCount + 1) % 20 === 0) {
-                      const gainedSpins = 3 + Math.floor(Math.random() * 4);
-                      setFreeSpins(prev => prev + gainedSpins);
-                      addLog(`🔥 FEVER MODE！获得 ${gainedSpins} 次免费摇奖！`, "success");
+              // 时间到，机器彻底停稳，弹出奖励
+              setTimeout(() => { 
+                  setWinningPositions(wins); 
+                  setIsSpinning(false); 
+                  
+                  if (scatters >= 3) {
+                      const add = scatters===3?5:scatters===4?10:20;
+                      setFreeSpins(prev => prev + add);
+                      setTimeout(() => {
+                          setSlotBanner(`获得 ${add} 次免费摇奖！`); setBannerBoost(true); setTimeout(() => setBannerBoost(false), 600);
+                      }, 500);
                   }
 
-                  let winMult = 0;
-                  if (s1 === s2 && s2 === s3) {
-                      if (s1 === '7️⃣') winMult = 20;
-                      else if (s1 === '💎') winMult = 10;
-                      else if (s1 === '💀') winMult = 0; 
-                      else winMult = 5;
-                  } else if (s1 === s2 || s2 === s3 || s1 === s3) { winMult = 1.5; }
-
-                  if (isFreeSpin) winMult *= 2;
-
-                  if (winMult > 0) {
-                      const winAmount = Math.floor(betAmount * winMult);
-                      setPlayer(p => ({ ...p, money: p.money + winAmount, mood: Math.min(p.maxMood, p.mood + 5) }));
-                      addLog(`🎰 中奖！获得 $${winAmount} ${isFreeSpin ? '(FEVER x2)' : ''}`, "success");
-                      setSlotMoodMsg('心情 +5');
-                  } else {
-                      if (spinCount > 648 && Math.random() < 0.01) {
-                          setPlayer(p => ({ ...p, money: p.money + jackpot, mood: 100 }));
-                          setJackpot(12000);
-                          addLog(`🚨🚨🚨 获得大奖池 $${jackpot}！！！🚨🚨🚨`, "success");
-                          setSlotMoodMsg('心情 +100');
-                      } else {
-                          setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 2) }));
-                          addLog(`🎰 未中奖。`, "error");
-                          setSlotMoodMsg('心情 -2');
+                  const lineBet = betAmount/10; let winAmount = Math.floor(totalMult * lineBet); if (isFrenzy || isFrenzySpin) winAmount *= 3;
+                  
+                  if (miniWin) { setPlayer(p=>({...p, money: p.money + jackpots.mini })); setJackpots(prev=>({...prev, mini: JACKPOT_BASES.mini })); setSlotBanner('MINI JACKPOT!'); setBannerBoost(true); setTimeout(()=>setBannerBoost(false),600); }
+                  else if (majorWin) { setPlayer(p=>({...p, money: p.money + jackpots.major })); setJackpots(prev=>({...prev, major: JACKPOT_BASES.major })); setSlotBanner('MAJOR JACKPOT!'); setBannerBoost(true); setTimeout(()=>setBannerBoost(false),600); }
+                  else if (grandWin) { setPlayer(p=>({...p, money: p.money + jackpots.grand })); setJackpots(prev=>({...prev, grand: JACKPOT_BASES.grand })); setSlotBanner('GRAND JACKPOT!'); setBannerBoost(true); setTimeout(()=>setBannerBoost(false),600); }
+                  
+                  if (winAmount>0) { 
+                      setPlayer(p => ({ ...p, money: p.money + winAmount, mood: Math.min(p.maxMood, p.mood + 5) })); 
+                      setSlotMoodMsg('心情 +5'); 
+                      addLog(`🎰 中奖！获得 $${winAmount}${isFrenzy || isFrenzySpin ? ' (狂热 x3)' : ''}`, 'success'); 
+                  } else { 
+                      setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 2) })); 
+                      setSlotMoodMsg('心情 -2'); 
+                      addLog('🎰 未中奖。', 'error'); 
+                  }
+                  
+                  const newEnergy = energy + energyGain; 
+                  if (newEnergy >= 10) { 
+                      setEnergy(newEnergy - 10); setFrenzySpins(prev=>prev + 5); setIsFrenzy(true); 
+                      if (!miniWin && !majorWin && !grandWin) { 
+                          setTimeout(() => { setSlotBanner('RADIATION FRENZY!'); setBannerBoost(true); setTimeout(()=>setBannerBoost(false),600); }, 600);
                       }
+                  } else { 
+                      setEnergy(newEnergy); setIsFrenzy(frenzySpins>0); 
                   }
-              }, 1000);
+              }, baseDelay);
           };
 
-          const buyItem = (item) => {
-            if (player.money >= item.cost) {
-              setPlayer(prev => ({ ...prev, money: prev.money - item.cost, storage: [...prev.storage, { ...item, type: 'consumable' }] }));
-              addLog(`购买了 ${item.name}`, 'success');
-            } else { addLog('资金不足！', 'error'); }
-          };
-          const buyGear = (gear) => {
-            if (player.money >= gear.cost) {
-              setPlayer(prev => ({ ...prev, money: prev.money - gear.cost, [gear.type]: gear }));
-              addLog(`装备了 ${gear.name}`, 'success');
-            } else { addLog('资金不足！', 'error'); }
-          };
-          const sellItem = (index) => {
-            const item = player.storage[index]; if (!item) return;
-            const sellPrice = item.val || Math.floor(item.cost / 2) || 1;
-            const catRelic = player.relics.find(r => r.id === 'cat');
-            const finalPrice = catRelic ? Math.floor(sellPrice * 1.2) : sellPrice;
-            setPlayer(prev => ({ ...prev, money: prev.money + finalPrice, storage: prev.storage.filter((_, i) => i !== index) }));
-            addLog(`出售 ${item.name}，获得 $${finalPrice}`, 'success');
-          };
-          const groupItems = (items) => {
-            const map = new Map();
-            items.forEach(item => {
-              const key = item.id || `${item.type}:${item.name}`;
-              if (!map.has(key)) map.set(key, { key, item, count: 0, totalVal: 0 });
-              const g = map.get(key);
-              g.count += 1; g.totalVal += item.val || 0;
-            });
-            return Array.from(map.values());
-          };
-          const sellOneByKey = (key) => {
-            const idx = player.storage.findIndex(i => (i.id || `${i.type}:${i.name}`) === key);
-            if (idx === -1) return;
-            const item = player.storage[idx];
-            const sellPrice = item.val || Math.floor(item.cost / 2) || 1;
-            const catRelic = player.relics.find(r => r.id === 'cat');
-            const finalPrice = catRelic ? Math.floor(sellPrice * 1.2) : sellPrice;
-            setPlayer(prev => ({ ...prev, money: prev.money + finalPrice, storage: prev.storage.filter((_, i) => i !== idx) }));
-            addLog(`出售 ${item.name}，获得 $${finalPrice}`, 'success');
-          };
-          const useOneByKey = (key) => {
-            const idx = player.storage.findIndex(i => (i.id || `${i.type}:${i.name}`) === key);
-            if (idx === -1) return;
-            const item = player.storage[idx];
-            if (item.type === 'relic') {
-               if (player.relics.some(r => r.id === item.id)) { addLog('已装备该遗物。'); return; }
-               setPlayer(prev => ({ ...prev, relics: [...prev.relics, item], storage: prev.storage.filter((_, i) => i !== idx) }));
-               addLog(`装备遗物：${item.name}`, 'success'); return;
-            }
-            if (item.type !== 'consumable') return;
-            let used = false; let newPlayer = { ...player };
-            if (item.effect === 'heal' && player.hp < player.maxHp) { newPlayer.hp = Math.min(player.maxHp, player.hp + item.value); used = true; }
-            else if (item.effect === 'satiety' && player.satiety < player.maxSatiety) { newPlayer.satiety = Math.min(player.maxSatiety, player.satiety + item.value); used = true; }
-            else if (item.effect === 'mood' && player.mood < player.maxMood) { newPlayer.mood = Math.min(player.maxMood, player.mood + item.value); newPlayer.sanity = Math.max(0, player.sanity - 10); used = true; }
-            else if (item.effect === 'sanity' && player.sanity < player.maxSanity) { newPlayer.sanity = Math.min(player.maxSanity, player.sanity + item.value); used = true; }
-            if (used) { newPlayer.storage = player.storage.filter((_, i) => i !== idx); setPlayer(newPlayer); addLog(`使用了 ${item.name}。`, 'success'); }
-          };
-          const getMaterialNameSet = () => {
-            const names = new Set();
-            Object.values(FACILITIES).forEach(f => { Object.keys(f.cost).forEach(n => names.add(n)); });
-            return names;
-          };
+          const buyItem = (item) => { if (player.money >= item.cost) { setPlayer(prev => ({ ...prev, money: prev.money - item.cost, storage: [...prev.storage, { ...item, type: 'consumable' }] })); addLog(`购买了 ${item.name}`, 'success'); } else { addLog('资金不足！', 'error'); } };
+          const buyGear = (gear) => { if (player.money >= gear.cost) { setPlayer(prev => ({ ...prev, money: prev.money - gear.cost, [gear.type]: gear })); addLog(`装备了 ${gear.name}`, 'success'); } else { addLog('资金不足！', 'error'); } };
+          const sellItem = (index) => { const item = player.storage[index]; if (!item) return; const sellPrice = item.val || Math.floor(item.cost / 2) || 1; const catRelic = player.relics.find(r => r.id === 'cat'); const finalPrice = catRelic ? Math.floor(sellPrice * 1.2) : sellPrice; setPlayer(prev => ({ ...prev, money: prev.money + finalPrice, storage: prev.storage.filter((_, i) => i !== index) })); addLog(`出售 ${item.name}，获得 $${finalPrice}`, 'success'); };
+          const groupItems = (items) => { const map = new Map(); items.forEach(item => { const key = item.id || `${item.type}:${item.name}`; if (!map.has(key)) map.set(key, { key, item, count: 0, totalVal: 0 }); const g = map.get(key); g.count += 1; g.totalVal += item.val || 0; }); return Array.from(map.values()); };
+          const sellOneByKey = (key) => { const idx = player.storage.findIndex(i => (i.id || `${i.type}:${i.name}`) === key); if (idx === -1) return; const item = player.storage[idx]; const sellPrice = item.val || Math.floor(item.cost / 2) || 1; const catRelic = player.relics.find(r => r.id === 'cat'); const finalPrice = catRelic ? Math.floor(sellPrice * 1.2) : sellPrice; setPlayer(prev => ({ ...prev, money: prev.money + finalPrice, storage: prev.storage.filter((_, i) => i !== idx) })); addLog(`出售 ${item.name}，获得 $${finalPrice}`, 'success'); };
+          const useOneByKey = (key) => { const idx = player.storage.findIndex(i => (i.id || `${i.type}:${i.name}`) === key); if (idx === -1) return; const item = player.storage[idx]; if (item.type === 'relic') { if (player.relics.some(r => r.id === item.id)) { addLog('已装备该遗物。'); return; } setPlayer(prev => ({ ...prev, relics: [...prev.relics, item], storage: prev.storage.filter((_, i) => i !== idx) })); addLog(`装备遗物：${item.name}`, 'success'); return; } if (item.type !== 'consumable') return; let used = false; let newPlayer = { ...player }; if (item.effect === 'heal' && player.hp < player.maxHp) { newPlayer.hp = Math.min(player.maxHp, player.hp + item.value); used = true; } else if (item.effect === 'satiety' && player.satiety < player.maxSatiety) { newPlayer.satiety = Math.min(player.maxSatiety, player.satiety + item.value); used = true; } else if (item.effect === 'mood' && player.mood < player.maxMood) { newPlayer.mood = Math.min(player.maxMood, player.mood + item.value); newPlayer.sanity = Math.max(0, player.sanity - 10); used = true; } else if (item.effect === 'sanity' && player.sanity < player.maxSanity) { newPlayer.sanity = Math.min(player.maxSanity, player.sanity + item.value); used = true; } if (used) { newPlayer.storage = player.storage.filter((_, i) => i !== idx); setPlayer(newPlayer); addLog(`使用了 ${item.name}。`, 'success'); } };
+          const getMaterialNameSet = () => { const names = new Set(); Object.values(FACILITIES).forEach(f => { Object.keys(f.cost).forEach(n => names.add(n)); }); return names; };
           const isMaterial = (item) => item && item.type === 'loot' && getMaterialNameSet().has(item.name);
           const isJunk = (item) => item && item.type === 'loot' && !isMaterial(item);
-          const sellAllLoot = () => {
-            const junkItems = player.storage.filter(isJunk);
-            if (junkItems.length === 0) { addLog('没有可出售的杂物。'); return; }
-            const catRelic = player.relics.find(r => r.id === 'cat');
-            let totalVal = junkItems.reduce((acc, i) => acc + (i.val || 0), 0);
-            if (catRelic) totalVal = Math.floor(totalVal * 1.2);
-            setPlayer(prev => ({ ...prev, money: prev.money + totalVal, storage: prev.storage.filter(i => !isJunk(i)) }));
-            addLog(`一键出售杂物，获得 $${totalVal}`, 'success');
-          };
-          const useItem = (index) => {
-            const item = player.storage[index]; if (!item) return;
-            if (item.type === 'relic') {
-               if (player.relics.some(r => r.id === item.id)) { addLog('已装备该遗物。'); return; }
-               setPlayer(prev => ({ ...prev, relics: [...prev.relics, item], storage: prev.storage.filter((_, i) => i !== index) }));
-               addLog(`装备遗物：${item.name}`, 'success'); return;
-            }
-            if (item.type !== 'consumable') return;
-            let used = false; let newPlayer = { ...player };
-            if (item.effect === 'heal' && player.hp < player.maxHp) { newPlayer.hp = Math.min(player.maxHp, player.hp + item.value); used = true; }
-            else if (item.effect === 'satiety' && player.satiety < player.maxSatiety) { newPlayer.satiety = Math.min(player.maxSatiety, player.satiety + item.value); used = true; }
-            else if (item.effect === 'mood' && player.mood < player.maxMood) { newPlayer.mood = Math.min(player.maxMood, player.mood + item.value); newPlayer.sanity = Math.max(0, player.sanity - 10); used = true; }
-            else if (item.effect === 'sanity' && player.sanity < player.maxSanity) { newPlayer.sanity = Math.min(player.maxSanity, player.sanity + item.value); used = true; }
-            if (used) { newPlayer.storage = player.storage.filter((_, i) => i !== index); setPlayer(newPlayer); addLog(`使用了 ${item.name}。`, 'success'); }
-          };
+          const sellAllLoot = () => { const junkItems = player.storage.filter(isJunk); if (junkItems.length === 0) { addLog('没有可出售的杂物。'); return; } const catRelic = player.relics.find(r => r.id === 'cat'); let totalVal = junkItems.reduce((acc, i) => acc + (i.val || 0), 0); if (catRelic) totalVal = Math.floor(totalVal * 1.2); setPlayer(prev => ({ ...prev, money: prev.money + totalVal, storage: prev.storage.filter(i => !isJunk(i)) })); addLog(`一键出售杂物，获得 $${totalVal}`, 'success'); };
 
-          const startRaid = () => {
-            setRaidState({ distance: 0, dangerLevel: 1, currentEnemy: null, isGlitchEnemy: false, tempLoot: [], currentLootItem: null, currentInteractiveEvent: null });
-            setPlayer(p => ({ ...p, sanity: Math.max(0, p.sanity - 5) })); setScene('raid'); addLog('进入废墟... 感觉到这里充满了恶意。');
-          };
-          const generateLootItem = (dist) => {
-            const rand = Math.random() * 100; const luckBonus = Math.floor(dist / 100); const moodBonus = player.mood > 80 ? 5 : 0;
-            let targetRarity = 'white';
-            if (dist > 3000 && Math.random() > 0.98) targetRarity = 'special';
-            else { const score = rand + luckBonus + moodBonus; if (score > 140) targetRarity = 'gold'; else if (score > 115) targetRarity = 'purple'; else if (score > 90) targetRarity = 'blue'; else if (score > 60) targetRarity = 'green'; else targetRarity = 'white'; }
-            let pool = LOOT_DB.filter(i => i.rarity === targetRarity); if (pool.length === 0) pool = LOOT_DB.filter(i => i.rarity === 'white');
-            return pool[Math.floor(Math.random() * pool.length)];
-          };
-          const explore = () => {
-            if (player.satiety <= 0) { addLog('你饿得走不动了... 生命值正在流失！', 'danger'); setPlayer(p => ({ ...p, hp: Math.max(0, p.hp - 10) })); if (player.hp <= 10) setScene('gameover'); return; }
-            const newDist = raidState.distance + 100; const rng = Math.random(); const currentDanger = 1 + Math.floor(newDist / 500);
-            const satBase = 5, sanBase = 2;
-            let satCost = satBase, sanCost = sanBase;
-            if (player.mood < 15) { satCost += 5; sanCost += 2; }
-            else if (player.mood < 30) { satCost += 2; sanCost += 1; }
-            setPlayer(prev => ({ ...prev, satiety: Math.max(0, prev.satiety - satCost), sanity: Math.max(0, prev.sanity - sanCost) }));
-            setRaidState(prev => ({ ...prev, distance: newDist, dangerLevel: currentDanger }));
-            addLog(`深入废墟 ${newDist}m... (饱食-${satCost}, San-${sanCost})`);
-            if (player.sanity < 50 && Math.random() > 0.7) addLog('你听到耳边有奇怪的低语...', 'danger');
-            if (rng < 0.2) { const event = STORY_EVENTS[Math.floor(Math.random() * STORY_EVENTS.length)]; setRaidState(prev => ({ ...prev, currentInteractiveEvent: event })); setScene('interactive_event'); addLog('前方出现异常情况...', 'blue'); return; }
-            if (rng < 0.45) { 
-              let enemy = null; let isGlitch = false;
-              if (player.sanity < 30 && Math.random() < 0.6) { isGlitch = true; const madnessScale = (50 - player.sanity) / 10; enemy = { name: '?&%#@!', hp: 50 + (madnessScale * 20), maxHp: 50 + (madnessScale * 20), atk: 8 + (madnessScale * 3), exp: 0 }; } 
-              else { const enemyPool = ENEMIES.filter((_, idx) => idx < currentDanger); const enemyTemplate = enemyPool[Math.floor(Math.random() * enemyPool.length)] || ENEMIES[ENEMIES.length-1]; enemy = { ...enemyTemplate, maxHp: enemyTemplate.hp }; }
-              setRaidState(prev => ({ ...prev, currentEnemy: enemy, isGlitchEnemy: isGlitch })); setPlayer(p => ({ ...p, sanity: Math.max(0, p.sanity - 5), mood: Math.max(0, p.mood - 2) })); setScene('combat');
-              if (isGlitch) addLog('警告：遭遇不可名状的实体！', 'danger'); else addLog(`遭遇敌对目标：${enemy.name}！`, 'danger');
-            } else if (rng < 0.8) { const lootItem = generateLootItem(newDist); setRaidState(prev => ({ ...prev, tempLoot: [...prev.tempLoot, lootItem], currentLootItem: lootItem })); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 5) })); addLog(`发现物资：${lootItem.name}`, 'success'); setScene('event'); } 
-            else { setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 1) })); addLog('周围很安静，也许太安静了。'); }
-          };
-          const handleCombat = (action) => {
-            if (!raidState.currentEnemy) return;
-            if (action === 'attack') {
-              let hitChance = 0.9; let critChance = 0.1; let finalAtk = player.weapon.atk;
-              const adrenalineRelic = player.relics.find(r => r.id === 'adrenaline');
-              if (adrenalineRelic && player.hp < player.maxHp * 0.3) { finalAtk *= 2; addLog('肾上腺素激活！伤害翻倍！', 'blue'); }
-              if (player.mood > 80) { critChance = 0.3; } if (player.mood < 30) { hitChance = 0.6; critChance = 0; }
-              if (raidState.isGlitchEnemy) { setPlayer(p => ({ ...p, satiety: Math.max(0, p.satiety - 2) })); addLog('攻击这个怪物让你感到异常疲惫...(饱食-2)', 'danger'); }
-              if (Math.random() > hitChance) { addLog('你的攻击落空了！(心情低落)', 'error'); setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 1) })); } 
-              else {
-                  let dmg = Math.max(1, finalAtk + Math.floor(Math.random() * 3));
-                  if (Math.random() < critChance) { dmg = Math.floor(dmg * 1.5); addLog('暴击！', 'success'); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 1) })); }
-                  const remainingEnemyHp = raidState.currentEnemy.hp - dmg; addLog(`你造成了 ${dmg} 点伤害。`);
-                  if (remainingEnemyHp <= 0) {
-                      addLog(`击败了敌人！`, 'success');
-                      const enemy = raidState.currentEnemy;
-                      const baseReward = Math.floor(((enemy?.exp || 20) * 1.5) + ((enemy?.atk || 5) * 3));
-                      const moneyReward = Math.max(10, baseReward * raidState.dangerLevel + Math.floor(Math.random() * 20));
-                      const dropItems = [];
-                      if (Math.random() < 0.6) dropItems.push({ ...ITEMS.food, type: 'consumable' });
-                      if (Math.random() < 0.3) dropItems.push({ ...ITEMS.medkit, type: 'consumable' });
-                      if (player.facilities.workbench && Math.random() < 0.2) dropItems.push({ ...ITEMS.ammo_box, type: 'consumable' });
-                      setPlayer(p => ({ ...p, money: p.money + moneyReward, storage: [...p.storage, ...dropItems] }));
-                      addLog(`获得 $${moneyReward}${dropItems.length ? '，并拾取 ' + dropItems.map(i => i.name).join('、') : ''}`, 'success');
-                      const vampireRelic = player.relics.find(r => r.id === 'vampire');
-                      if (vampireRelic) { setPlayer(p => ({ ...p, hp: Math.min(p.maxHp, p.hp + 5) })); addLog('吸血鬼之牙：汲取了 5 点生命。', 'blue'); }
-                      setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 5) }));
-                      setRaidState(prev => ({ ...prev, currentEnemy: null }));
-                      setScene('raid');
-                      return;
-                  }
-                  setRaidState(prev => ({ ...prev, currentEnemy: { ...prev.currentEnemy, hp: remainingEnemyHp } }));
-              }
-              const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); 
-              setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg, mood: Math.max(0, prev.mood - 2) })); 
-              if(enemyDmg > 0) triggerShake();
-              addLog(`敌人反击！受到 ${enemyDmg} 点伤害。`, 'danger'); if (player.hp - enemyDmg <= 0) setScene('gameover');
-            } else if (action === 'flee') {
-               let fleeChance = 0.5; if (player.mood > 80) fleeChance = 0.7; if (player.mood < 30) fleeChance = 0.3;
-               if (Math.random() < fleeChance) { addLog('逃跑成功！'); setRaidState(prev => ({ ...prev, currentEnemy: null })); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 2) })); addLog('短暂喘息：心情 +2', 'success'); setScene('raid'); }
-               else { addLog('逃跑失败！被敌人追上了。', 'danger'); const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg })); triggerShake(); if (player.hp - enemyDmg <= 0) setScene('gameover'); }
-            }
-          };
-          const evac = () => {
-            const healAmount = player.facilities.medical ? 40 : 20;
-            setPlayer(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + healAmount), sanity: Math.min(prev.maxSanity, prev.sanity + 20), storage: [...prev.storage, ...raidState.tempLoot] }));
-            addLog(`撤离成功！物资已转运至仓库。`, 'success'); setScene('result');
-          };
+          const startRaid = () => { setRaidState({ distance: 0, dangerLevel: 1, currentEnemy: null, isGlitchEnemy: false, tempLoot: [], currentLootItem: null, currentInteractiveEvent: null }); setPlayer(p => ({ ...p, sanity: Math.max(0, p.sanity - 5) })); setScene('raid'); addLog('进入废墟... 感觉到这里充满了恶意。'); };
+          const generateLootItem = (dist) => { const rand = Math.random() * 100; const luckBonus = Math.floor(dist / 100); const moodBonus = player.mood > 80 ? 5 : 0; let targetRarity = 'white'; if (dist > 3000 && Math.random() > 0.98) targetRarity = 'special'; else { const score = rand + luckBonus + moodBonus; if (score > 140) targetRarity = 'gold'; else if (score > 115) targetRarity = 'purple'; else if (score > 90) targetRarity = 'blue'; else if (score > 60) targetRarity = 'green'; else targetRarity = 'white'; } let pool = LOOT_DB.filter(i => i.rarity === targetRarity); if (pool.length === 0) pool = LOOT_DB.filter(i => i.rarity === 'white'); return pool[Math.floor(Math.random() * pool.length)]; };
+          const explore = () => { if (player.satiety <= 0) { addLog('你饿得走不动了... 生命值正在流失！', 'danger'); setPlayer(p => ({ ...p, hp: Math.max(0, p.hp - 10) })); if (player.hp <= 10) setScene('gameover'); return; } const newDist = raidState.distance + 100; const rng = Math.random(); const currentDanger = 1 + Math.floor(newDist / 500); const satBase = 5, sanBase = 2; let satCost = satBase, sanCost = sanBase; if (player.mood < 15) { satCost += 5; sanCost += 2; } else if (player.mood < 30) { satCost += 2; sanCost += 1; } setPlayer(prev => ({ ...prev, satiety: Math.max(0, prev.satiety - satCost), sanity: Math.max(0, prev.sanity - sanCost) })); setRaidState(prev => ({ ...prev, distance: newDist, dangerLevel: currentDanger })); addLog(`深入废墟 ${newDist}m... (饱食-${satCost}, San-${sanCost})`); if (player.sanity < 50 && Math.random() > 0.7) addLog('你听到耳边有奇怪的低语...', 'danger'); if (rng < 0.2) { const event = STORY_EVENTS[Math.floor(Math.random() * STORY_EVENTS.length)]; setRaidState(prev => ({ ...prev, currentInteractiveEvent: event })); setScene('interactive_event'); addLog('前方出现异常情况...', 'blue'); return; } if (rng < 0.45) { let enemy = null; let isGlitch = false; if (player.sanity < 30 && Math.random() < 0.6) { isGlitch = true; const madnessScale = (50 - player.sanity) / 10; enemy = { name: '?&%#@!', hp: 50 + (madnessScale * 20), maxHp: 50 + (madnessScale * 20), atk: 8 + (madnessScale * 3), exp: 0 }; } else { const enemyPool = ENEMIES.filter((_, idx) => idx < currentDanger); const enemyTemplate = enemyPool[Math.floor(Math.random() * enemyPool.length)] || ENEMIES[ENEMIES.length-1]; enemy = { ...enemyTemplate, maxHp: enemyTemplate.hp }; } setRaidState(prev => ({ ...prev, currentEnemy: enemy, isGlitchEnemy: isGlitch })); setPlayer(p => ({ ...p, sanity: Math.max(0, p.sanity - 5), mood: Math.max(0, p.mood - 2) })); setScene('combat'); if (isGlitch) addLog('警告：遭遇不可名状的实体！', 'danger'); else addLog(`遭遇敌对目标：${enemy.name}！`, 'danger'); } else if (rng < 0.8) { const lootItem = generateLootItem(newDist); setRaidState(prev => ({ ...prev, tempLoot: [...prev.tempLoot, lootItem], currentLootItem: lootItem })); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 5) })); addLog(`发现物资：${lootItem.name}`, 'success'); setScene('event'); } else { setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 1) })); addLog('周围很安静，也许太安静了。'); } };
+          const handleCombat = (action) => { if (!raidState.currentEnemy) return; if (action === 'attack') { let hitChance = 0.9; let critChance = 0.1; let finalAtk = player.weapon.atk; const adrenalineRelic = player.relics.find(r => r.id === 'adrenaline'); if (adrenalineRelic && player.hp < player.maxHp * 0.3) { finalAtk *= 2; addLog('肾上腺素激活！伤害翻倍！', 'blue'); } if (player.mood > 80) { critChance = 0.3; } if (player.mood < 30) { hitChance = 0.6; critChance = 0; } if (raidState.isGlitchEnemy) { setPlayer(p => ({ ...p, satiety: Math.max(0, p.satiety - 2) })); addLog('攻击这个怪物让你感到异常疲惫...(饱食-2)', 'danger'); } if (Math.random() > hitChance) { addLog('你的攻击落空了！(心情低落)', 'error'); setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 1) })); } else { let dmg = Math.max(1, finalAtk + Math.floor(Math.random() * 3)); if (Math.random() < critChance) { dmg = Math.floor(dmg * 1.5); addLog('暴击！', 'success'); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 1) })); } const remainingEnemyHp = raidState.currentEnemy.hp - dmg; addLog(`你造成了 ${dmg} 点伤害。`); if (remainingEnemyHp <= 0) { addLog(`击败了敌人！`, 'success'); const enemy = raidState.currentEnemy; const baseReward = Math.floor(((enemy?.exp || 20) * 1.5) + ((enemy?.atk || 5) * 3)); const moneyReward = Math.max(10, baseReward * raidState.dangerLevel + Math.floor(Math.random() * 20)); const dropItems = []; if (Math.random() < 0.6) dropItems.push({ ...ITEMS.food, type: 'consumable' }); if (Math.random() < 0.3) dropItems.push({ ...ITEMS.medkit, type: 'consumable' }); if (player.facilities.workbench && Math.random() < 0.2) dropItems.push({ ...ITEMS.ammo_box, type: 'consumable' }); setPlayer(p => ({ ...p, money: p.money + moneyReward, storage: [...p.storage, ...dropItems] })); addLog(`获得 $${moneyReward}${dropItems.length ? '，并拾取 ' + dropItems.map(i => i.name).join('、') : ''}`, 'success'); const vampireRelic = player.relics.find(r => r.id === 'vampire'); if (vampireRelic) { setPlayer(p => ({ ...p, hp: Math.min(p.maxHp, p.hp + 5) })); addLog('吸血鬼之牙：汲取了 5 点生命。', 'blue'); } setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 5) })); setRaidState(prev => ({ ...prev, currentEnemy: null })); setScene('raid'); return; } setRaidState(prev => ({ ...prev, currentEnemy: { ...prev.currentEnemy, hp: remainingEnemyHp } })); } const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg, mood: Math.max(0, prev.mood - 2) })); if(enemyDmg > 0) triggerShake(); addLog(`敌人反击！受到 ${enemyDmg} 点伤害。`, 'danger'); if (player.hp - enemyDmg <= 0) setScene('gameover'); } else if (action === 'flee') { let fleeChance = 0.5; if (player.mood > 80) fleeChance = 0.7; if (player.mood < 30) fleeChance = 0.3; if (Math.random() < fleeChance) { addLog('逃跑成功！'); setRaidState(prev => ({ ...prev, currentEnemy: null })); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 2) })); addLog('短暂喘息：心情 +2', 'success'); setScene('raid'); } else { addLog('逃跑失败！被敌人追上了。', 'danger'); const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg })); triggerShake(); if (player.hp - enemyDmg <= 0) setScene('gameover'); } } };
+          const evac = () => { const healAmount = player.facilities.medical ? 40 : 20; setPlayer(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + healAmount), sanity: Math.min(prev.maxSanity, prev.sanity + 20), storage: [...prev.storage, ...raidState.tempLoot] })); addLog(`撤离成功！物资已转运至仓库。`, 'success'); setScene('result'); };
           const resetGame = () => { setPlayer({ hp: 100, maxHp: 100, satiety: 100, maxSatiety: 100, mood: 100, maxMood: 100, sanity: 100, maxSanity: 100, money: 500, weapon: GEAR.knife, armor: GEAR.clothes, relics: [], facilities: {}, inventory: [], storage: [], }); setScene('intro'); setIntroStep(0); setLogs(['重新开始。祝你好运，行者。']); }
           
-          const CRTOverlay = () => { const glitchIntensity = player.sanity < 30 ? 'opacity-30' : 'opacity-0'; return ( <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden rounded-lg"> <div className="scanline"></div> <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.2)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] pointer-events-none" /> <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.4)_100%)] pointer-events-none" /> <div className={`absolute inset-0 bg-noise mix-blend-overlay ${glitchIntensity} pointer-events-none transition-opacity duration-1000`}></div> {player.sanity < 50 && ( <div className="absolute top-2 left-2 text-[10px] text-red-500 animate-pulse font-bold tracking-widest">⚠ MENTAL CRITICAL</div> )} </div> ); };
+          const CRTOverlay = () => { const glitchIntensity = player.sanity < 30 ? 'opacity-30' : 'opacity-0'; return ( <div className="pointer-events-none absolute inset-0 z-[60] overflow-hidden rounded-lg"> <div className="scanline"></div> <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.2)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] pointer-events-none" /> <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.4)_100%)] pointer-events-none" /> <div className={`absolute inset-0 bg-noise mix-blend-overlay ${glitchIntensity} pointer-events-none transition-opacity duration-1000`}></div> {player.sanity < 50 && ( <div className="absolute top-2 left-2 text-[10px] text-red-500 animate-pulse font-bold tracking-widest">⚠ MENTAL CRITICAL</div> )} </div> ); };
 
-          useEffect(() => {
-              if (scene === 'intro') {
-                  if (introStep < introTexts.length) {
-                      const timer = setTimeout(() => {
-                          setIntroStep(prev => prev + 1);
-                      }, 1500);
-                      return () => clearTimeout(timer);
-                  }
-              }
-          }, [scene, introStep]);
-
-          useEffect(() => {
-              if (introEndRef.current) {
-                  introEndRef.current.scrollIntoView({ behavior: 'smooth' });
-              }
-          }, [introStep]);
+          useEffect(() => { if (scene === 'intro') { if (introStep < introTexts.length) { const timer = setTimeout(() => { setIntroStep(prev => prev + 1); }, 1500); return () => clearTimeout(timer); } } }, [scene, introStep]);
+          useEffect(() => { if (introEndRef.current) { introEndRef.current.scrollIntoView({ behavior: 'smooth' }); } }, [introStep]);
 
           return (
             <div className={`min-h-screen bg-neutral-900 flex items-center justify-center p-4 font-mono text-slate-200 select-none ${isShake ? 'shake-anim' : ''}`}>
@@ -777,21 +655,15 @@
                                     </div>
                                     <div>
                                          <ProgressBar current={player.satiety} max={player.maxSatiety} color="bg-yellow-600" icon={<Utensils size={14} className="text-yellow-500"/>} />
-                                         <div className="flex justify-between text-xs text-slate-500 mt-0.5">
-                                            <span>饱食</span><span>{player.satiety}/{player.maxSatiety}</span>
-                                         </div>
+                                         <div className="flex justify-between text-xs text-slate-500 mt-0.5"><span>饱食</span><span>{player.satiety}/{player.maxSatiety}</span></div>
                                     </div>
                                     <div>
                                          <ProgressBar current={player.sanity} max={player.maxSanity} color="bg-blue-600" icon={<Activity size={14} className="text-blue-500"/>} />
-                                         <div className="flex justify-between text-xs text-slate-500 mt-0.5">
-                                            <span>理智</span><span>{player.sanity}/{player.maxSanity}</span>
-                                         </div>
+                                         <div className="flex justify-between text-xs text-slate-500 mt-0.5"><span>理智</span><span>{player.sanity}/{player.maxSanity}</span></div>
                                     </div>
                                     <div className="col-span-2">
                                          <ProgressBar current={player.mood} max={player.maxMood} color="bg-purple-500" icon={<Smile size={14} className="text-purple-400"/>} />
-                                         <div className="flex justify-between text-xs text-slate-500 mt-0.5">
-                                            <span>心情</span><span>{player.mood}/{player.maxMood}</span>
-                                         </div>
+                                         <div className="flex justify-between text-xs text-slate-500 mt-0.5"><span>心情</span><span>{player.mood}/{player.maxMood}</span></div>
                                     </div>
                                 </div>
                             )}
@@ -832,7 +704,7 @@
                                             <span className="text-2xl">物资仓库</span>
                                         </div>
                                     </PixelCard>
-                                    <PixelCard onClick={() => setScene('equipment')}>
+                                    <PixelCard onClick={() => setScene('equipment')} className="col-span-2">
                                        <div className="flex flex-col items-center py-2">
                                             <Shield className="mb-2 text-slate-300" size={32} />
                                             <span className="text-2xl">角色装备</span>
@@ -880,7 +752,22 @@
                                             </>
                                         ) : (
                                             <div className="flex flex-col items-center pt-2">
-                                                <SlotMachine bet={betAmount} onSpin={handleSpin} result={slotResult} isSpinning={isSpinning} jackpot={jackpot} spinCount={spinCount} freeSpins={freeSpins} moodMsg={slotMoodMsg} />
+                                                <SlotMachine5x3 
+                                                    bet={betAmount}
+                                                    onSpin={handleSpin5x3}
+                                                    isSpinning={isSpinning}
+                                                    result={slotGrid}
+                                                    moodMsg={slotMoodMsg}
+                                                    jackpots={jackpots}
+                                                    energy={energy}
+                                                    isFrenzy={isFrenzy || frenzySpins>0}
+                                                    freeSpins={freeSpins}
+                                                    frenzySpins={frenzySpins}
+                                                    teaserCol={teaserCol}
+                                                    winningPositions={winningPositions}
+                                                    bannerText={slotBanner}
+                                                    bannerBoost={bannerBoost}
+                                                />
                                                 <div className="flex gap-4 mt-2 w-full justify-center">
                                                     <button onClick={() => setBetAmount(Math.max(10, betAmount - 10))} className="bg-slate-700 px-4 py-2 rounded border border-slate-500 text-xl">-</button>
                                                     <div className="bg-black/50 px-6 py-2 rounded text-xl border border-slate-600 w-32 text-center text-yellow-500">${betAmount}</div>
@@ -953,8 +840,8 @@
                             {scene === 'storage' && (
                                 <div className="flex-1 flex flex-col h-full overflow-hidden fade-in min-h-0">
                                     <div className="flex-none flex justify-between items-center border-b border-slate-700 pb-2 mb-2 pt-2 bg-[#1a1c21]">
-                                        <h2 className="text-2xl text-blue-400 tracking-widest">=== 仓库管理 ===</h2>
-                                        <button onClick={sellAllLoot} className="text-base bg-red-900/50 text-red-300 px-3 py-1 rounded hover:bg-red-800 border border-red-700 flex items-center gap-1"><Trash2 size={16} /> 一键卖杂物</button>
+                                        <h2 className="text-2xl text-blue-400 tracking-widest">=== 仓库 ===</h2>
+                                        <button onClick={sellAllLoot} className="text-base bg-red-900/50 text-red-300 px-3 py-1 rounded hover:bg-red-800 border border-red-700 flex items-center gap-1"><Trash2 size={16} /> 卖杂物</button>
                                     </div>
                                     <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1 pb-2">
                                         {player.storage.length === 0 ? <div className="text-center text-slate-600 mt-10 text-xl">仓库空空如也...</div> : 
@@ -1097,7 +984,7 @@
                             )}
 
                             {scene === 'victory' && (
-                                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6 bg-black/90 z-20 absolute inset-0 rounded-lg fade-in">
+                                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6 bg-black/90 z-[70] absolute inset-0 rounded-lg fade-in">
                                     <div className="animate-bounce mb-4"><Rocket size={80} className="text-yellow-400" /></div>
                                     <h2 className="text-5xl text-yellow-400 font-bold tracking-[0.2em] mb-4">回归现实</h2>
                                     <div className="space-y-4 max-w-sm">

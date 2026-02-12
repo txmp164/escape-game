@@ -686,7 +686,7 @@
           };
           const evac = () => {
             const healAmount = player.facilities.medical ? 40 : 20;
-            setPlayer(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + healAmount), sanity: Math.min(prev.maxSanity, prev.sanity + 20), mood: Math.min(prev.maxMood, prev.mood + 20), storage: [...prev.storage, ...raidState.tempLoot] }));
+            setPlayer(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + healAmount), sanity: Math.min(prev.maxSanity, prev.sanity + 20), storage: [...prev.storage, ...raidState.tempLoot] }));
             addLog(`撤离成功！物资已转运至仓库。`, 'success'); setScene('result');
           };
           const resetGame = () => { setPlayer({ hp: 100, maxHp: 100, satiety: 100, maxSatiety: 100, mood: 100, maxMood: 100, sanity: 100, maxSanity: 100, money: 500, weapon: GEAR.knife, armor: GEAR.clothes, relics: [], facilities: {}, inventory: [], storage: [], }); setScene('intro'); setIntroStep(0); setLogs(['重新开始。祝你好运，行者。']); }
@@ -712,7 +712,7 @@
 
           return (
             <div className={`min-h-screen bg-neutral-900 flex items-center justify-center p-4 font-mono text-slate-200 select-none ${isShake ? 'shake-anim' : ''}`}>
-              <div className="game-container relative w-full max-w-lg bg-slate-800 rounded-2xl p-6 border-b-8 border-r-8 border-slate-950 shadow-2xl h-[140vh] flex flex-col my-8">
+              <div className="game-container relative w-full max-w-lg bg-slate-800 rounded-2xl p-6 border-b-8 border-r-8 border-slate-950 shadow-2xl h-[100vh] flex flex-col my-2">
                 
                 {scene !== 'intro' && (
                     <div className="mb-2 flex-none border-b-4 border-slate-600 pb-2">
@@ -1122,7 +1122,7 @@
                     )}
 
                     {scene !== 'intro' && scene !== 'victory' && (
-                        <div className="h-28 bg-black p-3 overflow-y-auto font-mono text-base md:text-lg border-t-4 border-slate-700 z-10 no-scrollbar flex flex-col-reverse tracking-wide leading-snug flex-none">
+                        <div className="h-20 bg-black p-3 overflow-y-auto font-mono text-base md:text-lg border-t-4 border-slate-700 z-10 no-scrollbar flex flex-col-reverse tracking-wide leading-snug flex-none">
                             {logs.map((log, i) => (
                                 <div key={i} className={`mb-1 border-l-2 pl-2 ${
                                     log.includes('danger') || log.includes('受到') || log.includes('失败') || log.includes('缺少') ? 'text-red-500 border-red-900' : 

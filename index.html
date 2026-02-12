@@ -441,6 +441,7 @@
             mood: 100, maxMood: 100, sanity: 100, maxSanity: 100,
             money: 500, weapon: GEAR.knife, armor: GEAR.clothes,
             relics: [], facilities: {}, inventory: [], storage: [],
+            day: 1,
           });
 
           const [raidState, setRaidState] = useState({
@@ -480,7 +481,7 @@
           };
 
           const settleExchange = () => {
-            const day = Math.floor(raidState.distance / 1000) + 1;
+            const day = player.day;
             if (exchangeLastDay !== null && day === exchangeLastDay) return;
             const news = EXCHANGE_NEWS_POOL[Math.floor(Math.random() * EXCHANGE_NEWS_POOL.length)];
             setExchangeNews(news);
@@ -488,7 +489,7 @@
               let delta = (Math.random() * 2 - 1) * a.vol;
               if (a.id === 'realty') { delta += (a.change || 0) > 0 ? 0.02 : (a.change || 0) < 0 ? -0.02 : 0; }
               if (news && news.targetId === a.id) { delta += news.effect; }
-              const np = Math.max(1, Math.floor(a.price * (1 + delta)));
+              const np = Math.max(1, Math.round(a.price * (1 + delta) * 100) / 100);
               const ch = Math.round(delta * 1000) / 10;
               return { ...a, price: np, change: ch };
             }));
@@ -499,8 +500,8 @@
             const asset = exchangeAssets.find(a => a.id === id);
             if (!asset) return;
             const cost = asset.price * qty;
-            const fee = Math.floor(cost * EXCHANGE_FEE_RATE);
-            const totalCost = cost + fee;
+            const fee = Math.round(cost * EXCHANGE_FEE_RATE * 100) / 100;
+            const totalCost = Math.round((cost + fee) * 100) / 100;
             if (qty <= 0 || player.money < totalCost) { addLog('资金不足！', 'error'); return; }
             setPlayer(p => ({ ...p, money: p.money - totalCost }));
             setExchangeAssets(prev => prev.map(a => {
@@ -509,7 +510,7 @@
               const newBasis = newHeld > 0 ? (((a.costBasis || 0) * a.held) + totalCost) / newHeld : 0;
               return { ...a, held: newHeld, costBasis: newBasis };
             }));
-            addLog(`📈 买入 ${asset.name} ${qty} 份，花费 $${cost}（手续费 $${fee}）`, 'success');
+            addLog(`📈 买入 ${asset.name} ${qty} 份，花费 $${cost.toFixed(2)}（手续费 $${fee.toFixed(2)}）`, 'success');
           };
 
           const sellAsset = (id, qty) => {
@@ -518,28 +519,28 @@
             const sellQtyFinal = Math.min(qty, asset.held);
             if (sellQtyFinal <= 0) { addLog('卖出数量无效。', 'error'); return; }
             const revenue = asset.price * sellQtyFinal;
-            const fee = Math.floor(revenue * EXCHANGE_FEE_RATE);
-            const netRevenue = Math.max(0, revenue - fee);
-            const pnl = Math.round((asset.price - (asset.costBasis || 0)) * sellQtyFinal - fee);
+            const fee = Math.round(revenue * EXCHANGE_FEE_RATE * 100) / 100;
+            const netRevenue = Math.max(0, Math.round((revenue - fee) * 100) / 100);
+            const pnl = Math.round(((asset.price - (asset.costBasis || 0)) * sellQtyFinal - fee) * 100) / 100;
             setPlayer(p => ({ ...p, money: p.money + netRevenue }));
             setExchangeAssets(prev => prev.map(a => {
               if (a.id !== id) return a;
               const remaining = a.held - sellQtyFinal;
               return { ...a, held: remaining, costBasis: remaining > 0 ? a.costBasis : 0 };
             }));
-            addLog(`💰 卖出 ${asset.name} ${sellQtyFinal} 份，收入 $${netRevenue}（手续费 $${fee}），盈亏 $${pnl}`, pnl >= 0 ? 'success' : 'error');
+            addLog(`💰 卖出 ${asset.name} ${sellQtyFinal} 份，收入 $${netRevenue.toFixed(2)}（手续费 $${fee.toFixed(2)}），盈亏 $${pnl.toFixed(2)}` , pnl >= 0 ? 'success' : 'error');
           };
 
           const sellAssetAll = (id) => {
             const asset = exchangeAssets.find(a => a.id === id);
             if (!asset || asset.held <= 0) { addLog('无可清仓的持仓。', 'error'); return; }
             const revenue = asset.price * asset.held;
-            const fee = Math.floor(revenue * EXCHANGE_FEE_RATE);
-            const netRevenue = Math.max(0, revenue - fee);
-            const pnl = Math.round((asset.price - (asset.costBasis || 0)) * asset.held - fee);
+            const fee = Math.round(revenue * EXCHANGE_FEE_RATE * 100) / 100;
+            const netRevenue = Math.max(0, Math.round((revenue - fee) * 100) / 100);
+            const pnl = Math.round(((asset.price - (asset.costBasis || 0)) * asset.held - fee) * 100) / 100;
             setPlayer(p => ({ ...p, money: p.money + netRevenue }));
             setExchangeAssets(prev => prev.map(a => a.id === id ? { ...a, held: 0, costBasis: 0 } : a));
-            addLog(`📉 清仓 ${asset.name}，收入 $${netRevenue}（手续费 $${fee}），盈亏 $${pnl}`, pnl >= 0 ? 'success' : 'error');
+            addLog(`📉 清仓 ${asset.name}，收入 $${netRevenue.toFixed(2)}（手续费 $${fee.toFixed(2)}），盈亏 $${pnl.toFixed(2)}` , pnl >= 0 ? 'success' : 'error');
           };
 
           useEffect(() => { if (shopTab === 'exchange') settleExchange(); }, [shopTab, raidState.distance]);
@@ -721,7 +722,7 @@
           const generateLootItem = (dist) => { const rand = Math.random() * 100; const luckBonus = Math.floor(dist / 100); const moodBonus = player.mood > 80 ? 5 : 0; let targetRarity = 'white'; if (dist > 3000 && Math.random() > 0.98) targetRarity = 'special'; else { const score = rand + luckBonus + moodBonus; if (score > 140) targetRarity = 'gold'; else if (score > 115) targetRarity = 'purple'; else if (score > 90) targetRarity = 'blue'; else if (score > 60) targetRarity = 'green'; else targetRarity = 'white'; } let pool = LOOT_DB.filter(i => i.rarity === targetRarity); if (pool.length === 0) pool = LOOT_DB.filter(i => i.rarity === 'white'); return pool[Math.floor(Math.random() * pool.length)]; };
           const explore = () => { if (player.satiety <= 0) { addLog('你饿得走不动了... 生命值正在流失！', 'danger'); setPlayer(p => ({ ...p, hp: Math.max(0, p.hp - 10) })); if (player.hp <= 10) setScene('gameover'); return; } const newDist = raidState.distance + 100; const rng = Math.random(); const currentDanger = 1 + Math.floor(newDist / 500); const satBase = 5, sanBase = 2; let satCost = satBase, sanCost = sanBase; if (player.mood < 15) { satCost += 5; sanCost += 2; } else if (player.mood < 30) { satCost += 2; sanCost += 1; } setPlayer(prev => ({ ...prev, satiety: Math.max(0, prev.satiety - satCost), sanity: Math.max(0, prev.sanity - sanCost) })); setRaidState(prev => ({ ...prev, distance: newDist, dangerLevel: currentDanger })); addLog(`深入废墟 ${newDist}m... (饱食-${satCost}, San-${sanCost})`); if (player.sanity < 50 && Math.random() > 0.7) addLog('你听到耳边有奇怪的低语...', 'danger'); if (rng < 0.2) { const event = STORY_EVENTS[Math.floor(Math.random() * STORY_EVENTS.length)]; setRaidState(prev => ({ ...prev, currentInteractiveEvent: event })); setScene('interactive_event'); addLog('前方出现异常情况...', 'blue'); return; } if (rng < 0.45) { let enemy = null; let isGlitch = false; if (player.sanity < 30 && Math.random() < 0.6) { isGlitch = true; const madnessScale = (50 - player.sanity) / 10; enemy = { name: '?&%#@!', hp: 50 + (madnessScale * 20), maxHp: 50 + (madnessScale * 20), atk: 8 + (madnessScale * 3), exp: 0 }; } else { const enemyPool = ENEMIES.filter((_, idx) => idx < currentDanger); const enemyTemplate = enemyPool[Math.floor(Math.random() * enemyPool.length)] || ENEMIES[ENEMIES.length-1]; enemy = { ...enemyTemplate, maxHp: enemyTemplate.hp }; } setRaidState(prev => ({ ...prev, currentEnemy: enemy, isGlitchEnemy: isGlitch })); setPlayer(p => ({ ...p, sanity: Math.max(0, p.sanity - 5), mood: Math.max(0, p.mood - 2) })); setScene('combat'); if (isGlitch) addLog('警告：遭遇不可名状的实体！', 'danger'); else addLog(`遭遇敌对目标：${enemy.name}！`, 'danger'); } else if (rng < 0.8) { const lootItem = generateLootItem(newDist); setRaidState(prev => ({ ...prev, tempLoot: [...prev.tempLoot, lootItem], currentLootItem: lootItem })); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 5) })); addLog(`发现物资：${lootItem.name}`, 'success'); setScene('event'); } else { setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 1) })); addLog('周围很安静，也许太安静了。'); } };
           const handleCombat = (action) => { if (!raidState.currentEnemy) return; if (action === 'attack') { let hitChance = 0.9; let xfinalAtk = player.weapon.atk; const adrenalineRelic = player.relics.find(r => r.id === 'adrenaline'); if (adrenalineRelic && player.hp < player.maxHp * 0.3) { xfinalAtk *= 2; addLog('肾上腺素激活！伤害翻倍！', 'blue'); } if (player.mood > 80) { } if (player.mood < 30) { hitChance = 0.6; } if (raidState.isGlitchEnemy) { setPlayer(p => ({ ...p, satiety: Math.max(0, p.satiety - 2) })); addLog('攻击这个怪物让你感到异常疲惫...(饱食-2)', 'danger'); } if (Math.random() > hitChance) { addLog('你的攻击落空了！(心情低落)', 'error'); setPlayer(p => ({ ...p, mood: Math.max(0, p.mood - 1) })); } else { let dmg = Math.max(1, xfinalAtk + Math.floor(Math.random() * 3)); const remainingEnemyHp = raidState.currentEnemy.hp - dmg; addLog(`你造成了 ${dmg} 点伤害。`); if (remainingEnemyHp <= 0) { addLog(`击败了敌人！`, 'success'); const enemy = raidState.currentEnemy; const baseReward = Math.floor(((enemy?.exp || 20) * 1.5) + ((enemy?.atk || 5) * 3)); const moneyReward = Math.max(10, baseReward * raidState.dangerLevel + Math.floor(Math.random() * 20)); const dropItems = []; if (Math.random() < 0.6) dropItems.push({ ...ITEMS.food, type: 'consumable' }); if (Math.random() < 0.3) dropItems.push({ ...ITEMS.medkit, type: 'consumable' }); if (player.facilities.workbench && Math.random() < 0.2) dropItems.push({ ...ITEMS.ammo_box, type: 'consumable' }); setPlayer(p => ({ ...p, money: p.money + moneyReward, storage: [...p.storage, ...dropItems] })); addLog(`获得 $${moneyReward}${dropItems.length ? '，并拾取 ' + dropItems.map(i => i.name).join('、') : ''}`, 'success'); const vampireRelic = player.relics.find(r => r.id === 'vampire'); if (vampireRelic) { setPlayer(p => ({ ...p, hp: Math.min(p.maxHp, p.hp + 5) })); addLog('吸血鬼之牙：汲取了 5 点生命。', 'blue'); } setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 5) })); setRaidState(prev => ({ ...prev, currentEnemy: null })); setScene('raid'); return; } setRaidState(prev => ({ ...prev, currentEnemy: { ...prev.currentEnemy, hp: remainingEnemyHp } })); } const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg, mood: Math.max(0, prev.mood - 2) })); if(enemyDmg > 0) triggerShake(); addLog(`敌人反击！受到 ${enemyDmg} 点伤害。`, 'danger'); if (player.hp - enemyDmg <= 0) setScene('gameover'); } else if (action === 'flee') { let fleeChance = 0.5; if (player.mood > 80) fleeChance = 0.7; if (player.mood < 30) fleeChance = 0.3; if (Math.random() < fleeChance) { addLog('逃跑成功！'); setRaidState(prev => ({ ...prev, currentEnemy: null })); setPlayer(p => ({ ...p, mood: Math.min(p.maxMood, p.mood + 2) })); addLog('短暂喘息：心情 +2', 'success'); setScene('raid'); } else { addLog('逃跑失败！被敌人追上了。', 'danger'); const enemyDmg = Math.max(0, raidState.currentEnemy.atk - player.armor.def); setPlayer(prev => ({ ...prev, hp: prev.hp - enemyDmg })); triggerShake(); if (player.hp - enemyDmg <= 0) setScene('gameover'); } } };
-          const evac = () => { const healAmount = player.facilities.medical ? 40 : 20; setPlayer(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + healAmount), sanity: Math.min(prev.maxSanity, prev.sanity + 20), storage: [...prev.storage, ...raidState.tempLoot] })); addLog(`撤离成功！物资已转运至仓库。`, 'success'); setScene('result'); };
+          const evac = () => { const healAmount = player.facilities.medical ? 40 : 20; setPlayer(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + healAmount), sanity: Math.min(prev.maxSanity, prev.sanity + 20), storage: [...prev.storage, ...raidState.tempLoot], day: (prev.day || 1) + 1 })); addLog(`撤离成功！物资已转运至仓库。`, 'success'); setScene('result'); };
           const resetGame = () => { setPlayer({ hp: 100, maxHp: 100, satiety: 100, maxSatiety: 100, mood: 100, maxMood: 100, sanity: 100, maxSanity: 100, money: 500, weapon: GEAR.knife, armor: GEAR.clothes, relics: [], facilities: {}, inventory: [], storage: [], }); setScene('intro'); setIntroStep(0); setLogs(['重新开始。祝你好运，行者。']); }
           
           const CRTOverlay = () => { const glitchIntensity = player.sanity < 30 ? 'opacity-30' : 'opacity-0'; return ( <div className="pointer-events-none absolute inset-0 z-[60] overflow-hidden rounded-lg"> <div className="scanline"></div> <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.2)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] pointer-events-none" /> <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.4)_100%)] pointer-events-none" /> <div className={`absolute inset-0 bg-noise mix-blend-overlay ${glitchIntensity} pointer-events-none transition-opacity duration-1000`}></div> {player.sanity < 50 && ( <div className="absolute top-2 left-2 text-[10px] text-red-500 animate-pulse font-bold tracking-widest">⚠ MENTAL CRITICAL</div> )} </div> ); };
@@ -746,7 +747,7 @@
                              <div className="text-green-400 text-2xl flex items-center gap-1 justify-end font-bold">
                                 <span className="text-sm">$</span> {player.money.toLocaleString()}
                              </div>
-                             <div className="text-lg text-slate-500">DAY {Math.floor(raidState.distance / 1000) + 1}</div>
+                             <div className="text-lg text-slate-500">DAY {player.day}</div>
                            </div>
                        </div>
                        <div className="px-1">
@@ -984,7 +985,7 @@
                                                                     <div className="text-sm text-slate-500">持有 {a.held} 份</div>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <div className="text-2xl text-yellow-500 font-bold">${a.price}</div>
+                                                                    <div className="text-2xl text-yellow-500 font-bold">${a.price.toFixed(2)}</div>
                                                                     <div className={`text-sm ${color}`}>{a.change > 0 ? '+' : ''}{a.change}%</div>
                                                                 </div>
                                                             </div>
@@ -1001,7 +1002,7 @@
                                                         return (
                                                             <div className="space-y-2">
                                                                 <div className="flex items-center justify-between flex-wrap gap-y-1">
-                                                                    <div className="text-slate-400 min-w-0 truncate">选中：<span className="text-slate-200">{sa?.name}</span> @ <span className="text-yellow-500">${sa?.price}</span></div>
+                                                                    <div className="text-slate-400 min-w-0 truncate">选中：<span className="text-slate-200">{sa?.name}</span> @ <span className="text-yellow-500">${((sa?.price ?? 0).toFixed(2))}</span></div>
                                                                     <div className="text-slate-500">持有 {sa?.held} 份</div>
                                                                 </div>
                                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

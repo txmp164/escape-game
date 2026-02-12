@@ -903,7 +903,7 @@
                                       <h2 className="text-3xl text-red-500 font-bold tracking-widest">{raidState.currentEnemy.name}</h2>
                                       <div className="w-2/3 mx-auto mt-2"><ProgressBar current={raidState.currentEnemy.hp} max={raidState.currentEnemy.maxHp} color="bg-red-600" /></div>
                                    </div>
-                                   <div className="flex justify-between px-4 text-xl border-t border-b border-slate-700 py-2 bg-black/30"><div className="text-green-400">HP: {player.hp}</div><div className="text-yellow-400">WPN: {player.weapon.atk} DMG</div></div>
+                                   <div className="flex justify-between px-4 text-xl border-t border-b border-slate-700 py-2 bg-black/30"><div className="text-green-400">HP: {raidState.currentEnemy.hp}/{raidState.currentEnemy.maxHp}</div><div className="text-yellow-400">ATK: {raidState.currentEnemy.atk} DMG</div></div>
                                    <div className="grid grid-cols-2 gap-4 mb-2">
                                       <button onClick={() => handleCombat('attack')} className="p-6 bg-red-900/40 border-2 border-red-600 hover:bg-red-800/60 rounded flex flex-col items-center justify-center group"><Sword size={48} className="text-red-500 mb-2" /><span className="text-2xl text-red-300 font-bold">攻击</span></button>
                                       <button onClick={() => handleCombat('flee')} className="p-6 bg-slate-800 border-2 border-slate-600 hover:bg-slate-700 rounded flex flex-col items-center justify-center group"><Footprints size={48} className="text-slate-400 mb-2" /><span className="text-2xl text-slate-300">逃跑</span></button>
